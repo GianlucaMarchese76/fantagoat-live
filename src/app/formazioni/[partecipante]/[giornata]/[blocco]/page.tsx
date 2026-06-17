@@ -333,8 +333,17 @@ export default async function FormazionePage({
 
                 <div className="text-sm text-slate-500">
                   {g.ruolo} - {g.nazionale}
-                  {g.is_capitano ? " · C" : ""}
-                  {g.is_vice ? " · V" : ""}
+{g.is_capitano && (
+  <span className="ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
+    Capitano
+  </span>
+)}
+
+{g.is_vice && (
+  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+    Vice
+  </span>
+)}{g.is_capitano && (
                 </div>
 
                 {g.stato === "entrato" && (
