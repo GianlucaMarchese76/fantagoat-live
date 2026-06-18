@@ -217,7 +217,7 @@ export default async function FormazionePage({
   const bloccoNorm = blocco.toUpperCase();
 
   const { data, error } = await supabase
-    .from("v_formazioni_live")
+    .from("v_formazioni_senza_voto")
     .select("*")
     .eq("partecipante", nomePartecipante)
     .eq("giornata", giornataNorm)
