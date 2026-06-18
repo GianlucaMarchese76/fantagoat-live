@@ -1,10 +1,26 @@
-import { supabase } from "../lib/supabase";
-
 export default async function Home() {
-  const { data: classifica, error } = await supabase
-    .from("v_classifica_generale")
-    .select("*")
-    .order("posizione");
+  const classifica = [
+    {
+      posizione: 1,
+      partecipante: "Mazzullo",
+      punti: 173.5,
+    },
+    {
+      posizione: 2,
+      partecipante: "Ceccoli",
+      punti: 172.5,
+    },
+    {
+      posizione: 3,
+      partecipante: "Greppi",
+      punti: 166.5,
+    },
+    {
+      posizione: 4,
+      partecipante: "Marchese",
+      punti: 160.5,
+    },
+  ];
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">
@@ -20,17 +36,11 @@ export default async function Home() {
 
       <section className="bg-white rounded-2xl shadow p-4 mb-6">
         <h2 className="text-xl font-bold mb-3">
-          Classifica Generale
+          Classifica Generale G1
         </h2>
 
-        {error && (
-          <pre className="text-red-600">
-            {JSON.stringify(error, null, 2)}
-          </pre>
-        )}
-
         <div className="grid gap-2">
-          {classifica?.map((r) => (
+          {classifica.map((r) => (
             <a
               key={r.partecipante}
               href={`/partecipanti/${r.partecipante}`}
@@ -51,6 +61,10 @@ export default async function Home() {
               </div>
             </a>
           ))}
+        </div>
+
+        <div className="mt-4 text-sm text-slate-500">
+          Totale calcolato come G1AF + G1GL
         </div>
 
         <a
