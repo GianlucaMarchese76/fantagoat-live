@@ -76,7 +76,7 @@ export default async function ClassificaPage({
   const blocco = competizioneNorm.slice(2);
 
   const { data, error } = await supabase
-    .from("v_formazioni_senza_voto")
+    .from("v_formazioni_live")
     .select("*")
     .eq("giornata", giornata)
     .eq("blocco", blocco);
