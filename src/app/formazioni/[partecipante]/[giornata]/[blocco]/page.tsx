@@ -333,6 +333,29 @@ export default async function FormazionePage({
 
                 <div className="text-sm text-slate-500">
                   {g.ruolo} - {g.nazionale}
+                  {g.avversario && (
+  <div className="text-xs text-slate-400 mt-1">
+    vs. {g.avversario}
+  </div>
+)}
+
+{g.stato_giocatore === "partita_da_giocare" && (
+  <div className="text-xs font-semibold text-slate-400 mt-1">
+    Partita da giocare
+  </div>
+)}
+
+{g.stato_giocatore === "in_campo" && (
+  <div className="text-xs font-semibold text-slate-500 mt-1">
+    In campo
+  </div>
+)}
+
+{g.stato_giocatore === "non_ha_giocato" && (
+  <div className="text-xs font-semibold text-red-600 mt-1">
+    Non ha giocato
+  </div>
+)}
 {g.is_capitano && (
   <span className="ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
     Capitano
