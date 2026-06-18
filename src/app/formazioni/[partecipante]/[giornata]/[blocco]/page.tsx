@@ -343,8 +343,8 @@ export default async function FormazionePage({
   <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
     Vice
   </span>
-)}{g.is_capitano && (
-                </div>
+)}
+                  </div>
 
                 {g.stato === "entrato" && (
                   <div className="text-xs font-bold text-green-700 mt-1">
