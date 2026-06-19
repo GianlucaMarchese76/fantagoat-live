@@ -332,19 +332,50 @@ export default async function FormazionePage({
                 <div className="font-semibold">{g.giocatore}</div>
 
                 <div className="text-sm text-slate-500">
-                  {g.ruolo} - {g.nazionale}
-{g.is_capitano && (
-  <span className="ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
-    Capitano
-  </span>
+  {g.ruolo} - {g.nazionale}
+
+  {g.avversario && (
+    <span className="ml-2 text-slate-400">
+      vs. {g.avversario}
+    </span>
+  )}
+
+  {g.is_capitano && (
+    <span className="ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
+      Capitano
+    </span>
+  )}
+
+  {g.is_vice && (
+    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+      Vice
+    </span>
+  )}
+</div>
+
+{g.stato_giocatore === "partita_da_giocare" && (
+  <div className="text-xs font-semibold text-slate-400 mt-1">
+    ⚪ Partita da giocare
+  </div>
 )}
 
-{g.is_vice && (
-  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
-    Vice
-  </span>
+{g.stato_giocatore === "in_campo" && (
+  <div className="text-xs font-semibold text-green-600 mt-1">
+    🟢 In campo
+  </div>
 )}
-                  </div>
+
+{g.stato_giocatore === "non_ha_giocato" && (
+  <div className="text-xs font-semibold text-red-600 mt-1">
+    🔴 Non ha giocato
+  </div>
+)}
+
+{g.stato_giocatore === "ha_voto" && (
+  <div className="text-xs font-semibold text-blue-600 mt-1">
+    ✅ Voto disponibile
+  </div>
+)}
 
                 {g.stato === "entrato" && (
                   <div className="text-xs font-bold text-green-700 mt-1">
