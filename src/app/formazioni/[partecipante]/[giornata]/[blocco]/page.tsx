@@ -423,7 +423,7 @@ risultato.sostituzioni = [];
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  voto {g.voto}
+                  voto {votoDaUsare(g)}
                 </div>
               </div>
             </div>
@@ -495,7 +495,7 @@ risultato.sostituzioni = [];
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  voto {g.voto}
+                  voto {votoDaUsare(g)}
                 </div>
               </div>
             </div>
