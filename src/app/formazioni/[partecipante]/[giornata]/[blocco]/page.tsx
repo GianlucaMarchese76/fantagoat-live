@@ -420,13 +420,25 @@ risultato.sostituzioni = [];
 )}
 </div>
               <div className="text-right">
-                <div className="text-xl font-bold tabular-nums">
-                  {g.fantapunti_calcolo}
-                </div>
+                <div
+  className={`text-xl font-bold tabular-nums ${
+    g.stato_giocatore === "partita_da_giocare" ||
+    g.stato_giocatore === "in_campo" ||
+    g.stato_giocatore === "in_attesa_voto"
+      ? "text-slate-400"
+      : ""
+  }`}
+>
+  {g.fantapunti_calcolo}
+</div>
 
-                <div className="text-xs text-slate-500">
-                  voto {votoDaUsare(g)}
-                </div>
+             <div className="text-xs text-slate-500">
+  {g.stato_giocatore === "partita_da_giocare" ||
+   g.stato_giocatore === "in_campo" ||
+   g.stato_giocatore === "in_attesa_voto"
+    ? `voto ipotizzato ${votoDaUsare(g)}`
+    : `voto ${votoDaUsare(g)}`}
+</div>
               </div>
             </div>
           ))}
@@ -492,13 +504,25 @@ risultato.sostituzioni = [];
               </div>
 
               <div className="text-right">
-                <div className="text-xl font-bold tabular-nums">
+                <div
+  className={`text-xl font-bold tabular-nums ${
+    g.stato_giocatore === "partita_da_giocare" ||
+    g.stato_giocatore === "in_campo" ||
+    g.stato_giocatore === "in_attesa_voto"
+      ? "text-slate-400"
+      : ""
+  }`}
+>
                   {g.fantapunti}
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  voto {votoDaUsare(g)}
-                </div>
+  {g.stato_giocatore === "partita_da_giocare" ||
+   g.stato_giocatore === "in_campo" ||
+   g.stato_giocatore === "in_attesa_voto"
+    ? `voto ipotizzato ${votoDaUsare(g)}`
+    : `voto ${votoDaUsare(g)}`}
+</div>
               </div>
             </div>
           ))}
