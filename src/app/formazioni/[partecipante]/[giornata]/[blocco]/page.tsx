@@ -251,6 +251,7 @@ export default async function FormazionePage({
   const panchina = data?.filter((g) => g.tipo === "Panchina") ?? [];
 
   const risultato = calcolaFormazioneEffettiva(titolari, panchina);
+risultato.sostituzioni = [];
 
   const totaleGiocatori = risultato.totaleGiocatori;
   const votoCapitano = calcolaVotoCapitano(risultato.effettivi);
