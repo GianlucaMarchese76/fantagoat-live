@@ -66,6 +66,18 @@ function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
   const usati = new Set<string>();
   const sostituzioni: any[] = [];
 
+  if (!ABILITA_SOSTITUZIONI) {
+  return {
+    effettivi,
+    sostituzioni,
+    moduloFinale: moduloDaGiocatori(effettivi),
+    totaleGiocatori: effettivi.reduce(
+      (sum, g) => sum + numero(g.fantapunti_calcolo),
+      0
+    ),
+  };
+}
+
 const titolariDaSostituire = ABILITA_SOSTITUZIONI
   ? effettivi
       .filter((g) => g.stato_giocatore === "non_ha_giocato")
