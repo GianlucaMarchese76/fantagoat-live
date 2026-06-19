@@ -1,5 +1,4 @@
 import { supabase } from "../../../lib/supabase";
-import { calcolaTotaleFormazione } from "../../../lib/calcoloFormazione";
 
 function titoloCompetizione(competizione: string) {
   if (competizione.toLowerCase() === "generale") {
@@ -76,7 +75,7 @@ export default async function ClassificaPage({
   const blocco = competizioneNorm.slice(2);
 
   const { data, error } = await supabase
-    .from("v_formazioni_senza_voto")
+    .from("v_formazioni_dettaglio_live")
     .select("*")
     .eq("giornata", giornata)
     .eq("blocco", blocco);
@@ -92,10 +91,36 @@ export default async function ClassificaPage({
   }
 
   const classifica = Array.from(gruppi.entries())
-    .map(([partecipante, rows]) => ({
-      partecipante,
-      punti: calcolaTotaleFormazione(rows),
-    }))
+    .map(([partecipante, rows]) => {
+      const giornataConclusa = rows.every(
+        (g) =>
+          g.stato_giocatore === "ha_voto" ||
+          g.stato_giocatore === "non_ha_giocato"
+      );
+
+      const rowsCalcolo = rows.map((r) => ({
+        ...r,
+        voto: giornataConclusa ? r.voto : r.voto_live,
+        fantapunti: giornataConclusa
+          ? r.fantapunti
+          : r.fantapunti_live,
+      }));
+
+      const bonusModulo = Number(
+        rowsCalcolo[0]?.bonus_malus_modulo ?? 0
+      );
+
+      return {
+        partecipante,
+        punti:
+          rowsCalcolo
+            .filter((g) => g.tipo === "Titolare")
+            .reduce(
+              (totale, g) => totale + Number(g.fantapunti ?? 0),
+              0
+            ) + bonusModulo,
+      };
+    })
     .sort((a, b) => b.punti - a.punti)
     .map((r, index) => ({
       ...r,
