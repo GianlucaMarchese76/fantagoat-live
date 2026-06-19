@@ -1,4 +1,8 @@
 import { supabase } from "../../../lib/supabase";
+import { calcolaTotaleFormazione } from "../../../lib/calcoloFormazione";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function titoloCompetizione(competizione: string) {
   if (competizione.toLowerCase() === "generale") {
@@ -110,15 +114,19 @@ export default async function ClassificaPage({
         rowsCalcolo[0]?.bonus_malus_modulo ?? 0
       );
 
+      const puntiLive =
+        rowsCalcolo
+          .filter((g) => g.tipo === "Titolare")
+          .reduce(
+            (totale, g) => totale + Number(g.fantapunti ?? 0),
+            0
+          ) + bonusModulo;
+
       return {
         partecipante,
-        punti:
-          rowsCalcolo
-            .filter((g) => g.tipo === "Titolare")
-            .reduce(
-              (totale, g) => totale + Number(g.fantapunti ?? 0),
-              0
-            ) + bonusModulo,
+        punti: giornataConclusa
+          ? calcolaTotaleFormazione(rowsCalcolo)
+          : puntiLive,
       };
     })
     .sort((a, b) => b.punti - a.punti)

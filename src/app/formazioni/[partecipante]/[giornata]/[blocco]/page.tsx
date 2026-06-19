@@ -14,7 +14,7 @@ function numero(v: any) {
   return Number(v ?? 0);
 }
 
-const ABILITA_SOSTITUZIONI = false;
+const ABILITA_SOSTITUZIONI = true;
 
 function votoDaUsare(g: any) {
   if (
@@ -52,6 +52,8 @@ function moduloValido(giocatori: any[]) {
 }
 
 function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
+  const conclusa = giornataConclusa([...titolari, ...panchina]);
+  
   const effettivi = titolari.map((g) => ({
     ...g,
    fantapunti_calcolo: numero(g.fantapunti_live ?? g.fantapunti),
@@ -78,7 +80,8 @@ function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
   };
 }
 
-const titolariDaSostituire = ABILITA_SOSTITUZIONI
+const titolariDaSostituire =
+  ABILITA_SOSTITUZIONI && conclusa
   ? effettivi
       .filter((g) => g.stato_giocatore === "non_ha_giocato")
       .sort((a, b) => numero(a.ordine) - numero(b.ordine))
@@ -265,7 +268,6 @@ export default async function FormazionePage({
   const panchina = data?.filter((g) => g.tipo === "Panchina") ?? [];
 
   const risultato = calcolaFormazioneEffettiva(titolari, panchina);
-risultato.sostituzioni = [];
 
   const totaleGiocatori = risultato.totaleGiocatori;
   const votoCapitano = calcolaVotoCapitano(risultato.effettivi);
