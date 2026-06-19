@@ -387,13 +387,12 @@ export default async function FormazionePage({
                   </div>
                 )}
 
-                {g.stato === "ufficio" && (
-                  <div className="text-xs font-bold text-red-600 mt-1">
-                    SENZA VOTO NON SOSTITUITO
-                  </div>
-                )}
-              </div>
-
+             {g.stato === "ufficio" && g.stato_giocatore === "non_ha_giocato" && (
+  <div className="text-xs font-bold text-red-600 mt-1">
+    NON HA GIOCATO
+  </div>
+)}
+</div>
               <div className="text-right">
                 <div className="text-xl font-bold tabular-nums">
                   {g.fantapunti_calcolo}
