@@ -54,7 +54,7 @@ function moduloValido(giocatori: any[]) {
 function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
   const effettivi = titolari.map((g) => ({
     ...g,
-    fantapunti_calcolo: numero(g.fantapunti),
+   fantapunti_calcolo: numero(g.fantapunti_live ?? g.fantapunti),
     stato: "titolare",
     sostituisce: null,
   }));
@@ -111,7 +111,9 @@ const titolariDaSostituire = ABILITA_SOSTITUZIONI
 
       effettivi[indexTitolare] = {
         ...sostituto,
-        fantapunti_calcolo: numero(sostituto.fantapunti),
+       fantapunti_calcolo: numero(
+  sostituto.fantapunti_live ?? sostituto.fantapunti
+),
         stato: "entrato",
         sostituisce: titolare.giocatore,
       };
