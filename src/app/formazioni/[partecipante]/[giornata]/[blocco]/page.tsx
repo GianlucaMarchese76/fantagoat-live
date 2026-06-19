@@ -25,18 +25,18 @@ function votoDaUsare(g: any) {
     return 6;
   }
 
-  return votoDaUsare(g);
+    return numero(g.voto_live ?? g.voto);
 }
 function haVoto(g: any) {
-  if (
-    g.stato_giocatore === "partita_da_giocare" ||
-    g.stato_giocatore === "in_campo" ||
-    g.stato_giocatore === "in_attesa_voto"
-  ) {
-    return true;
-  }
-
   return g.stato_giocatore === "ha_voto";
+}
+
+function giornataConclusa(giocatori: any[]) {
+  return giocatori.every(
+    (g) =>
+      g.stato_giocatore === "ha_voto" ||
+      g.stato_giocatore === "non_ha_giocato"
+  );
 }
 
 function moduloDaGiocatori(giocatori: any[]) {
