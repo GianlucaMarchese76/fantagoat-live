@@ -364,7 +364,11 @@ export default async function FormazionePage({
     🟢 In campo
   </div>
 )}
-
+{g.stato_giocatore === "in_attesa_voto" && (
+  <div className="text-xs font-semibold text-yellow-600 mt-1">
+    🟡 In attesa del voto
+  </div>
+)}
 {g.stato_giocatore === "non_ha_giocato" && (
   <div className="text-xs font-semibold text-red-600 mt-1">
     🔴 Non ha giocato
