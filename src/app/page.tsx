@@ -1,114 +1,171 @@
+import { supabase } from "../lib/supabase";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function Home() {
-  const classifica = [
-    {
-      posizione: 1,
-      partecipante: "Mazzullo",
-      punti: 173.5,
-    },
-    {
-      posizione: 2,
-      partecipante: "Ceccoli",
-      punti: 172.5,
-    },
-    {
-      posizione: 3,
-      partecipante: "Greppi",
-      punti: 166.5,
-    },
-    {
-      posizione: 4,
-      partecipante: "Marchese",
-      punti: 160.5,
-    },
-  ];
+  const { data: generale } = await supabase
+    .from("v_classifica_generale")
+    .select("*")
+    .order("posizione")
+    .limit(4);
+
+  const { data: competizioni } = await supabase
+    .from("v_competizioni_concluse")
+    .select("*")
+    .order("giornata")
+    .order("blocco");
+
+  const live = competizioni?.find((c) => !c.conclusa);
+
+  const { data: partite } = await supabase
+    .from("calendario_partite")
+    .select("giornata, blocco, kickoff")
+    .order("kickoff");
+
+  const prossima = partite
+    ?.map((p) => {
+      const kickoff = new Date(p.kickoff);
+      return {
+        giornata: p.giornata,
+        blocco: p.blocco,
+        kickoff,
+        deadline: new Date(kickoff.getTime() - 5 * 60 * 1000),
+      };
+    })
+    .filter((p) => new Date() < p.deadline)
+    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">
       <header className="mb-6">
-        <h1 className="text-4xl font-bold">
-          🏆 FantaGOAT Live
-        </h1>
-
+        <h1 className="text-4xl font-bold">🏆 FantaGOAT Live</h1>
         <p className="text-slate-600 mt-2">
           Classifiche, rose e formazioni aggiornate.
         </p>
       </header>
 
-      <section className="bg-white rounded-2xl shadow p-4 mb-6">
-        <h2 className="text-xl font-bold mb-3">
-          Classifica Generale
+      <section className="mb-8">
+        <h2 className="text-sm font-bold text-slate-500 mb-3">
+          CLASSIFICHE
         </h2>
 
-        <div className="grid gap-2">
-          {classifica.map((r) => (
+        <div className="grid gap-4">
+          <section className="bg-white rounded-2xl shadow p-4">
+            <h3 className="text-xl font-bold mb-3">Classifica Generale</h3>
+
+            <div className="grid gap-2">
+              {generale?.map((r) => (
+                <div
+                  key={r.partecipante}
+                  className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3"
+                >
+                  <div className="font-semibold">
+                    {r.posizione}. {r.partecipante}
+                  </div>
+
+                  <div className="text-xl font-bold tabular-nums">
+                    {r.punti}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <a
-              key={r.partecipante}
-              href={`/partecipanti/${r.partecipante}`}
-              className="flex items-center justify-between rounded-lg px-2 py-1"
+              href="/classifiche/generale"
+              className="block mt-4 text-blue-600 text-sm font-semibold"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 font-bold">
-                  {r.posizione}.
-                </div>
-
-                <div className="font-medium truncate">
-                  {r.partecipante}
-                </div>
-              </div>
-
-              <div className="font-bold tabular-nums">
-                {r.punti}
-              </div>
+              → Apri classifica generale
             </a>
-          ))}
-        </div>
+          </section>
 
-        <div className="mt-4 text-sm text-slate-500">
-          Totale complessivo giornate concluse
-        </div>
+          <section className="bg-white rounded-2xl shadow p-4">
+            <h3 className="text-xl font-bold mb-2">Classifica Live</h3>
 
-        <a
-          href="/classifiche"
-          className="block mt-4 text-blue-600 text-sm font-semibold"
-        >
-          Vedi classifiche di giornata →
-        </a>
+            {live ? (
+              <>
+                <div className="text-slate-600 mb-3">
+                  Competizione in corso:{" "}
+                  <span className="font-semibold">
+                    {live.giornata}
+                    {live.blocco}
+                  </span>
+                </div>
+
+                <a
+                  href={`/classifiche/${live.giornata}${live.blocco}`}
+                  className="block bg-slate-100 rounded-xl px-4 py-3 text-center font-bold"
+                >
+                  Apri classifica live →
+                </a>
+              </>
+            ) : (
+              <div className="text-slate-600">
+                Nessuna competizione in corso.
+              </div>
+            )}
+
+            <a
+              href="/classifiche"
+              className="block mt-4 text-blue-600 text-sm font-semibold"
+            >
+              → Tutte le classifiche
+            </a>
+          </section>
+        </div>
       </section>
 
-      <section className="grid gap-3">
-        <a
-          href="/rose"
-          className="bg-white rounded-2xl shadow p-4 block"
-        >
-          <div className="text-xl font-bold">Rose</div>
-          <div className="text-slate-600">
-            Consulta le rose A-F e G-L dei partecipanti.
-          </div>
-        </a>
+      <section>
+        <h2 className="text-sm font-bold text-slate-500 mb-3">
+          ROSA E FORMAZIONI
+        </h2>
 
-        <a
-          href="/formazioni"
-          className="bg-white rounded-2xl shadow p-4 block"
-        >
-          <div className="text-xl font-bold">Formazioni</div>
-          <div className="text-slate-600">
-            Titolari, panchina, capitani e vice.
-          </div>
-        </a>
+        <div className="grid gap-4">
+          <a
+            href="/inserisci-formazione"
+            className="bg-blue-600 text-white rounded-2xl shadow p-5 block"
+          >
+            <div className="text-2xl font-bold mb-2">
+              ⚡ Schiera Formazione
+            </div>
 
-<a
-  href="/inserisci-formazione"
-  className="bg-white rounded-2xl shadow p-4 block"
->
-  <div className="text-xl font-bold">
-    📝 Inserisci Formazione
-  </div>
+            {prossima ? (
+              <div className="text-blue-100">
+                Prossima consegna: {prossima.giornata}
+                {prossima.blocco} ·{" "}
+                {prossima.deadline.toLocaleString("it-IT", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                  timeZone: "Europe/Rome",
+                })}
+              </div>
+            ) : (
+              <div className="text-blue-100">
+                Nessuna consegna aperta al momento.
+              </div>
+            )}
+          </a>
 
-  <div className="text-slate-600">
-    Scegli modulo, titolari, panchina, capitano e vice.
-  </div>
-</a>
+          <a
+            href="/formazioni"
+            className="bg-white rounded-2xl shadow p-4 block"
+          >
+            <div className="text-xl font-bold">Formazioni</div>
+            <div className="text-slate-600">
+              Consulta le formazioni schierate.
+            </div>
+          </a>
 
+          <a
+            href="/rose"
+            className="bg-white rounded-2xl shadow p-4 block"
+          >
+            <div className="text-xl font-bold">Rose</div>
+            <div className="text-slate-600">
+              Consulta le rose dei partecipanti.
+            </div>
+          </a>
+        </div>
       </section>
     </main>
   );
