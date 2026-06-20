@@ -1,19 +1,64 @@
 import { supabase } from "../../lib/supabase";
 
-const giornate = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-function splitCompetizione(c: string) {
-  return {
-    giornata: c.slice(0, 2),
-    blocco: c.slice(2),
-  };
-}
+type FormazioneRow = {
+  giornata: string;
+  blocco: string;
+  partecipante_id: string;
+};
+
+type PartecipanteRow = {
+  id: string;
+  nome: string;
+};
 
 export default async function FormazioniPage() {
-  const { data: partecipanti, error } = await supabase
+  const { data: righe, error } = await supabase
+    .from("formazioni")
+    .select("giornata, blocco, partecipante_id");
+
+  const { data: partecipanti } = await supabase
     .from("partecipanti")
-    .select("*")
-    .order("nome");
+    .select("id, nome");
+
+  const partecipantiMap = new Map(
+    ((partecipanti ?? []) as PartecipanteRow[]).map((p) => [p.id, p.nome])
+  );
+
+  const gruppi = new Map<
+    string,
+    {
+      partecipante: string;
+      giornata: string;
+      blocco: string;
+    }
+  >();
+
+  for (const r of (righe ?? []) as FormazioneRow[]) {
+    const partecipante = partecipantiMap.get(r.partecipante_id);
+
+    if (!partecipante) continue;
+
+    const key = `${partecipante}-${r.giornata}-${r.blocco}`;
+
+    gruppi.set(key, {
+      partecipante,
+      giornata: r.giornata,
+      blocco: r.blocco,
+    });
+  }
+
+  const formazioni = Array.from(gruppi.values()).sort((a, b) => {
+    const p = a.partecipante.localeCompare(b.partecipante);
+    if (p !== 0) return p;
+
+    const g = a.giornata.localeCompare(b.giornata);
+    if (g !== 0) return g;
+
+    return a.blocco.localeCompare(b.blocco);
+  });
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">
@@ -31,32 +76,29 @@ export default async function FormazioniPage() {
         </pre>
       )}
 
-      <div className="grid gap-5">
-        {partecipanti?.map((p) => (
-          <section
-            key={p.id}
-            className="bg-white rounded-2xl shadow p-4"
+      {formazioni.length === 0 && (
+        <section className="bg-white rounded-2xl shadow p-4">
+          <div className="text-slate-600">
+            Nessuna formazione salvata.
+          </div>
+        </section>
+      )}
+
+      <div className="grid gap-3">
+        {formazioni.map((f) => (
+          <a
+            key={`${f.partecipante}-${f.giornata}-${f.blocco}`}
+            href={`/formazioni/${encodeURIComponent(f.partecipante)}/${f.giornata}/${f.blocco}`}
+            className="bg-white rounded-2xl shadow p-4 block"
           >
-            <h2 className="text-2xl font-bold mb-3">
-              {p.nome}
-            </h2>
-
-            <div className="grid grid-cols-2 gap-2">
-              {giornate.map((c) => {
-                const { giornata, blocco } = splitCompetizione(c);
-
-                return (
-                  <a
-                    key={c}
-                    href={`/formazioni/${p.nome}/${giornata}/${blocco}`}
-                    className="bg-slate-100 rounded-xl px-4 py-3 text-center font-bold"
-                  >
-                    {c}
-                  </a>
-                );
-              })}
+            <div className="text-xl font-bold">
+              {f.partecipante}
             </div>
-          </section>
+
+            <div className="text-slate-600">
+              {f.giornata} · Blocco {f.blocco}
+            </div>
+          </a>
         ))}
       </div>
     </main>
