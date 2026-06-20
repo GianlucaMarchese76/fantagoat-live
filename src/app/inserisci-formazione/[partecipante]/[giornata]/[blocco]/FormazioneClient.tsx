@@ -213,7 +213,7 @@ function cambiaPanchinaro(index: number, nuovoId: string) {
   );
 
   return (
-    <form method="post" action="/inserisci-formazione" className="space-y-6">
+    <form method="post" action="/api/inserisci-formazione" className="space-y-6">
       <input type="hidden" name="partecipante" value={partecipante} />
       <input type="hidden" name="giornata" value={giornata} />
       <input type="hidden" name="blocco" value={blocco} />
@@ -240,6 +240,15 @@ function cambiaPanchinaro(index: number, nuovoId: string) {
 </option>
           ))}
         </select>
+
+<p className="text-sm text-slate-500 mt-2">
+  Bonus/malus modulo:{" "}
+  <span className="font-semibold">
+    {MODULI[modulo].bonus > 0 ? "+" : ""}
+    {MODULI[modulo].bonus}
+  </span>
+</p>
+
       </section>
 
       <section className="bg-white rounded-2xl shadow p-4">
