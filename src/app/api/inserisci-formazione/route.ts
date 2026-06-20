@@ -12,6 +12,33 @@ export async function POST(request: Request) {
   const capitano = String(formData.get("capitano") ?? "");
   const vice = String(formData.get("vice") ?? "");
 
+const { data: partite, error: partiteError } = await supabase
+  .from("calendario_partite")
+  .select("kickoff")
+  .eq("giornata", giornata)
+  .eq("blocco", blocco)
+  .order("kickoff", { ascending: true })
+  .limit(1);
+
+if (partiteError || !partite || partite.length === 0) {
+  return NextResponse.json(
+    { error: "Calendario non trovato" },
+    { status: 400 }
+  );
+}
+
+const primaPartita = new Date(partite[0].kickoff);
+const chiusuraInserimento = new Date(
+  primaPartita.getTime() - 5 * 60 * 1000
+);
+
+if (new Date() >= chiusuraInserimento) {
+  return NextResponse.json(
+    { error: "Inserimento formazione chiuso" },
+    { status: 403 }
+  );
+}
+
   const { data: partecipanteRow, error: partecipanteError } = await supabase
     .from("partecipanti")
     .select("id")

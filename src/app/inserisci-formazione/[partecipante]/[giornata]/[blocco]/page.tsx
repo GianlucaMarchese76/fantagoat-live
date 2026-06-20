@@ -33,6 +33,35 @@ export default async function InserisciFormazionePage({
     .eq("giornata", giornataNorm)
     .eq("blocco", bloccoNorm);
 
+    const { data: partecipanteRow } = await supabase
+  .from("partecipanti")
+  .select("id")
+  .eq("nome", partecipanteNorm)
+  .single();
+
+const partecipanteId = partecipanteRow?.id;
+
+const { data: formazioneEsistente } = partecipanteId
+  ? await supabase
+      .from("formazioni")
+      .select("*")
+      .eq("partecipante_id", partecipanteId)
+      .eq("giornata", giornataNorm)
+      .eq("blocco", bloccoNorm)
+      .order("tipo")
+      .order("ordine")
+  : { data: [] };
+
+const { data: metaEsistente } = partecipanteId
+  ? await supabase
+      .from("formazioni_meta")
+      .select("*")
+      .eq("partecipante_id", partecipanteId)
+      .eq("giornata", giornataNorm)
+      .eq("blocco", bloccoNorm)
+      .maybeSingle()
+  : { data: null };
+
   return (
     <main className="min-h-screen p-4 bg-slate-100">
       <a href="/classifiche" className="text-blue-600 text-sm">
@@ -60,6 +89,8 @@ export default async function InserisciFormazionePage({
   blocco={bloccoNorm}
   rosa={rosa ?? []}
   calendario={calendario ?? []}
+  formazioneEsistente={formazioneEsistente ?? []}
+  metaEsistente={metaEsistente}
 />
     </main>
   );

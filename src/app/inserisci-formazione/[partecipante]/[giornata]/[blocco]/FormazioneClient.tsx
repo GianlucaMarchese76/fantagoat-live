@@ -14,6 +14,19 @@ type Giocatore = {
   quotazione_g3: number | null;
 };
 
+type FormazioneSalvata = {
+  giocatore_id: string;
+  tipo: string;
+  ordine: number;
+  is_capitano: boolean;
+  is_vice: boolean;
+};
+
+type MetaSalvata = {
+  modulo_dichiarato: string;
+  bonus_malus_modulo: number;
+} | null;
+
 type Calendario = {
   nazionale: string;
   nome_avversaria: string;
@@ -89,18 +102,47 @@ export default function FormazioneClient({
   blocco,
   rosa,
   calendario,
+  formazioneEsistente,
+  metaEsistente,
 }: {
   partecipante: string;
   giornata: string;
   blocco: string;
   rosa: Giocatore[];
   calendario: Calendario[];
+  formazioneEsistente: FormazioneSalvata[];
+  metaEsistente: MetaSalvata;
 }) {
-  const [modulo, setModulo] = useState("M_352");
-  const [titolari, setTitolari] = useState<string[]>(Array(11).fill(""));
-  const [panchina, setPanchina] = useState<string[]>(Array(15).fill(""));
-  const [capitano, setCapitano] = useState("");
-  const [vice, setVice] = useState("");
+  const titolariIniziali = Array(11).fill("");
+const panchinaIniziale = Array(15).fill("");
+
+for (const r of formazioneEsistente) {
+  if (r.tipo === "Titolare") {
+    titolariIniziali[r.ordine - 1] = r.giocatore_id;
+  }
+
+  if (r.tipo === "Panchina") {
+    panchinaIniziale[r.ordine - 1] = r.giocatore_id;
+  }
+}
+
+const capitanoIniziale =
+  formazioneEsistente.find((r) => r.is_capitano)?.giocatore_id ?? "";
+
+const viceIniziale =
+  formazioneEsistente.find((r) => r.is_vice)?.giocatore_id ?? "";
+
+const [modulo, setModulo] = useState(
+  metaEsistente?.modulo_dichiarato ?? "M_352"
+);
+
+const [titolari, setTitolari] = useState<string[]>(titolariIniziali);
+
+const [panchina, setPanchina] = useState<string[]>(panchinaIniziale);
+
+const [capitano, setCapitano] = useState(capitanoIniziale);
+
+const [vice, setVice] = useState(viceIniziale);
 
   const ruoliTitolari = MODULI[modulo].ruoli;
 
