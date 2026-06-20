@@ -36,7 +36,7 @@ export default async function Home() {
 
       <section className="bg-white rounded-2xl shadow p-4 mb-6">
         <h2 className="text-xl font-bold mb-3">
-          Classifica Generale G1
+          Classifica Generale
         </h2>
 
         <div className="grid gap-2">
@@ -64,7 +64,7 @@ export default async function Home() {
         </div>
 
         <div className="mt-4 text-sm text-slate-500">
-          Totale calcolato come G1AF + G1GL
+          Totale complessivo giornate concluse
         </div>
 
         <a

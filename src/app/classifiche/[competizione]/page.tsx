@@ -78,6 +78,16 @@ export default async function ClassificaPage({
   const giornata = competizioneNorm.slice(0, 2);
   const blocco = competizioneNorm.slice(2);
 
+const { data: statoCompetizione } = await supabase
+  .from("v_competizioni_concluse")
+  .select("conclusa")
+  .eq("giornata", giornata)
+  .eq("blocco", blocco)
+  .single();
+
+const competizioneConclusa =
+  statoCompetizione?.conclusa ?? false;
+
   const { data, error } = await supabase
     .from("v_formazioni_dettaglio_live")
     .select("*")

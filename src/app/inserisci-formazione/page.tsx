@@ -75,9 +75,10 @@ export default async function InserisciFormazioneIndex() {
             <p className="text-sm text-slate-500 mb-3">
               Chiusura inserimento:{" "}
               {c.chiusura.toLocaleString("it-IT", {
-                dateStyle: "short",
-                timeStyle: "short",
-              })}
+  dateStyle: "short",
+  timeStyle: "short",
+  timeZone: "Europe/Rome",
+})}
             </p>
 
             <div className="grid gap-2">

@@ -25,6 +25,7 @@ type FormazioneSalvata = {
 type MetaSalvata = {
   modulo_dichiarato: string;
   bonus_malus_modulo: number;
+  created_at: string;
 } | null;
 
 type Calendario = {
@@ -235,8 +236,8 @@ function cambiaPanchinaro(index: number, nuovoId: string) {
         >
           {Object.entries(MODULI).map(([key, value]) => (
             <option key={key} value={key}>
-              {value.label} · bonus {value.bonus}
-            </option>
+  {value.label}
+</option>
           ))}
         </select>
       </section>
