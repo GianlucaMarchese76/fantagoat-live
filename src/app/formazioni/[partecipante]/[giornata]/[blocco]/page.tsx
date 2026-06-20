@@ -354,12 +354,12 @@ export default async function FormazionePage({
       )}
 
       <section className="mb-6">
-        <h2 className="text-xl font-bold mb-3">Undici effettivo</h2>
+        <h2 className="text-xl font-bold mb-3">Formazione titolare</h2>
 
         <div className="grid gap-2">
-          {risultato.effettivi.map((g) => (
+          {risultato.effettivi.map((g, index) => (
             <div
-              key={`${g.giocatore_id}-${g.stato}`}
+              key={`${g.giocatore_id}-${g.stato}-${index}`}
               className={`bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-between ${
                 g.stato === "entrato"
                   ? "border-2 border-green-300"
@@ -501,10 +501,15 @@ export default async function FormazionePage({
       <section>
         <h2 className="text-xl font-bold mb-3">Panchina</h2>
 
+<p className="text-sm text-slate-500 mt-1 mb-3">
+  L'ordine della panchina determina la priorità delle sostituzioni,
+  purché sia possibile schierare un modulo consentito.
+</p>
+
         <div className="grid gap-2">
-          {panchina.map((g) => (
+          {panchina.map((g, index) => (
             <div
-              key={g.giocatore_id}
+              key={`${g.giocatore_id}-${index}`}
               className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-between"
             >
               <div>

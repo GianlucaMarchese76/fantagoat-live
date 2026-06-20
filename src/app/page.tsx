@@ -95,6 +95,20 @@ export default async function Home() {
             Titolari, panchina, capitani e vice.
           </div>
         </a>
+
+<a
+  href="/inserisci-formazione"
+  className="bg-white rounded-2xl shadow p-4 block"
+>
+  <div className="text-xl font-bold">
+    📝 Inserisci Formazione
+  </div>
+
+  <div className="text-slate-600">
+    Scegli modulo, titolari, panchina, capitano e vice.
+  </div>
+</a>
+
       </section>
     </main>
   );
