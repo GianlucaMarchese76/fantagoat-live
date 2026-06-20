@@ -27,38 +27,28 @@ export default async function FormazioniPage() {
     ((partecipanti ?? []) as PartecipanteRow[]).map((p) => [p.id, p.nome])
   );
 
-  const gruppi = new Map<
-    string,
-    {
-      partecipante: string;
-      giornata: string;
-      blocco: string;
-    }
-  >();
+  const gruppi = new Map<string, { giornata: string; blocco: string }[]>();
 
   for (const r of (righe ?? []) as FormazioneRow[]) {
     const partecipante = partecipantiMap.get(r.partecipante_id);
-
     if (!partecipante) continue;
 
-    const key = `${partecipante}-${r.giornata}-${r.blocco}`;
+    const key = `${r.giornata}-${r.blocco}`;
+    const lista = gruppi.get(partecipante) ?? [];
 
-    gruppi.set(key, {
-      partecipante,
-      giornata: r.giornata,
-      blocco: r.blocco,
-    });
+    if (!lista.some((x) => `${x.giornata}-${x.blocco}` === key)) {
+      lista.push({
+        giornata: r.giornata,
+        blocco: r.blocco,
+      });
+    }
+
+    gruppi.set(partecipante, lista);
   }
 
-  const formazioni = Array.from(gruppi.values()).sort((a, b) => {
-    const p = a.partecipante.localeCompare(b.partecipante);
-    if (p !== 0) return p;
-
-    const g = a.giornata.localeCompare(b.giornata);
-    if (g !== 0) return g;
-
-    return a.blocco.localeCompare(b.blocco);
-  });
+  const partecipantiConFormazioni = Array.from(gruppi.entries()).sort(([a], [b]) =>
+    a.localeCompare(b)
+  );
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">
@@ -76,7 +66,7 @@ export default async function FormazioniPage() {
         </pre>
       )}
 
-      {formazioni.length === 0 && (
+      {partecipantiConFormazioni.length === 0 && (
         <section className="bg-white rounded-2xl shadow p-4">
           <div className="text-slate-600">
             Nessuna formazione salvata.
@@ -84,22 +74,40 @@ export default async function FormazioniPage() {
         </section>
       )}
 
-      <div className="grid gap-3">
-        {formazioni.map((f) => (
-          <a
-            key={`${f.partecipante}-${f.giornata}-${f.blocco}`}
-            href={`/formazioni/${encodeURIComponent(f.partecipante)}/${f.giornata}/${f.blocco}`}
-            className="bg-white rounded-2xl shadow p-4 block"
-          >
-            <div className="text-xl font-bold">
-              {f.partecipante}
-            </div>
+      <div className="grid gap-4">
+        {partecipantiConFormazioni.map(([partecipante, lista]) => {
+          const ordinate = [...lista].sort((a, b) => {
+            const g = a.giornata.localeCompare(b.giornata);
+            if (g !== 0) return g;
+            return a.blocco.localeCompare(b.blocco);
+          });
 
-            <div className="text-slate-600">
-              {f.giornata} · Blocco {f.blocco}
-            </div>
-          </a>
-        ))}
+          return (
+            <section
+              key={partecipante}
+              className="bg-white rounded-2xl shadow p-4"
+            >
+              <h2 className="text-2xl font-bold mb-3">
+                {partecipante}
+              </h2>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {ordinate.map((f) => (
+                  <a
+                    key={`${partecipante}-${f.giornata}-${f.blocco}`}
+                    href={`/formazioni/${encodeURIComponent(
+                      partecipante
+                    )}/${f.giornata}/${f.blocco}`}
+                    className="bg-slate-100 rounded-xl px-4 py-3 text-center font-bold"
+                  >
+                    {f.giornata}
+                    {f.blocco}
+                  </a>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </main>
   );
