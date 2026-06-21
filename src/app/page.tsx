@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabase } from "../lib/supabase";
 import { calcolaTotaleFormazione } from "../lib/calcoloFormazione";
 
@@ -225,19 +226,26 @@ export default async function Home() {
 
                 <div className="grid gap-2">
                   {classificaLive.slice(0, 4).map((r) => (
-                    <div
-                      key={r.partecipante}
-                      className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3"
-                    >
-                      <div className="font-semibold">
-                        {r.posizione}. {r.partecipante}
-                      </div>
+  <Link
+    key={r.partecipante}
+    href={`/formazioni/${r.partecipante}/${competizioneLive.giornata}/${competizioneLive.blocco}`}
+    className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 hover:bg-slate-100 transition"
+  >
+    <div>
+      <div className="font-semibold">
+        {r.posizione}. {r.partecipante}
+      </div>
 
-                      <div className="text-xl font-bold tabular-nums">
-                        {r.punti}
-                      </div>
-                    </div>
-                  ))}
+      <div className="text-xs text-blue-600">
+        Vedi formazione →
+      </div>
+    </div>
+
+    <div className="text-xl font-bold tabular-nums">
+      {r.punti}
+    </div>
+  </Link>
+))}
                 </div>
 
                 <a
@@ -308,7 +316,7 @@ export default async function Home() {
             </div>
           </a>
 
-          <a
+                   <a
             href="/rose"
             className="bg-white rounded-2xl shadow p-4 block"
           >
@@ -316,29 +324,29 @@ export default async function Home() {
             <div className="text-slate-600">
               Scopri le rose dei partecipanti.
             </div>
-
-<section className="mt-8">
-  <h2 className="text-sm font-bold text-slate-500 mb-3">
-    REGOLAMENTO
-  </h2>
-
-  <a
-    href="/regolamento"
-    className="bg-white rounded-2xl shadow p-4 block"
-  >
-    <div className="text-xl font-bold">
-      Regolamento FantaGOAT2026
-    </div>
-
-    <div className="text-slate-600">
-      Regolamento ufficiale, riferimento Gazzetta ed eccezioni FantaGOAT.
-    </div>
-  </a>
-</section>
-
           </a>
         </div>
       </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-bold text-slate-500 mb-3">
+          REGOLAMENTO
+        </h2>
+
+        <a
+          href="/regolamento"
+          className="bg-white rounded-2xl shadow p-4 block"
+        >
+          <div className="text-xl font-bold">
+            Regolamento FantaGOAT2026
+          </div>
+
+          <div className="text-slate-600">
+            Regolamento ufficiale, riferimento Gazzetta ed eccezioni FantaGOAT.
+          </div>
+        </a>
+      </section>
+      
     </main>
   );
 }
