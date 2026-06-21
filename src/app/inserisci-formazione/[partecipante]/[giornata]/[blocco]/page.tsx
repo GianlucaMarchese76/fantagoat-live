@@ -77,6 +77,21 @@ const { data: metaEsistente } = partecipanteId
         {bloccoNorm}
       </div>
 
+      {metaEsistente?.created_at ? (
+  <div className="text-sm text-slate-500 mb-6">
+    Ultimo salvataggio:{" "}
+    {new Date(metaEsistente.created_at).toLocaleString("it-IT", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "Europe/Rome",
+    })}
+  </div>
+) : (
+  <div className="text-sm text-slate-500 mb-6">
+    Nessuna formazione salvata.
+  </div>
+)}
+
 {metaEsistente?.created_at && (
   <div className="text-sm text-slate-500 mb-6">
     Ultimo salvataggio:{" "}
