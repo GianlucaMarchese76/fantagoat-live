@@ -92,16 +92,6 @@ const { data: metaEsistente } = partecipanteId
   </div>
 )}
 
-{metaEsistente?.created_at && (
-  <div className="text-sm text-slate-500 mb-6">
-    Ultimo salvataggio:{" "}
-    {new Date(metaEsistente.created_at).toLocaleString("it-IT", {
-      dateStyle: "short",
-      timeStyle: "short",
-    })}
-  </div>
-)}
-
       {rosaError && (
         <pre className="text-red-600">
           {JSON.stringify(rosaError, null, 2)}

@@ -279,7 +279,7 @@ export default async function Home() {
 
             {prossimaDeadline ? (
               <div className="text-blue-100">
-                Prossima consegna:{" "}
+                Scadenza:{" "}
                 {labelCompetizione(
                   prossimaDeadline.giornata,
                   prossimaDeadline.blocco
@@ -293,7 +293,7 @@ export default async function Home() {
               </div>
             ) : (
               <div className="text-blue-100">
-                Nessuna consegna aperta al momento.
+                Il torneo si è concluso.
               </div>
             )}
           </a>
@@ -314,8 +314,28 @@ export default async function Home() {
           >
             <div className="text-xl font-bold">Rose</div>
             <div className="text-slate-600">
-              Consulta le rose dei partecipanti.
+              Scopri le rose dei partecipanti.
             </div>
+
+<section className="mt-8">
+  <h2 className="text-sm font-bold text-slate-500 mb-3">
+    REGOLAMENTO
+  </h2>
+
+  <a
+    href="/regolamento"
+    className="bg-white rounded-2xl shadow p-4 block"
+  >
+    <div className="text-xl font-bold">
+      Regolamento FantaGOAT2026
+    </div>
+
+    <div className="text-slate-600">
+      Regolamento ufficiale, riferimento Gazzetta ed eccezioni FantaGOAT.
+    </div>
+  </a>
+</section>
+
           </a>
         </div>
       </section>

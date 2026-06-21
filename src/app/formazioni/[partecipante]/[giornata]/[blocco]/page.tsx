@@ -256,6 +256,22 @@ export default async function FormazionePage({
   const giornataNorm = giornata.toUpperCase();
   const bloccoNorm = blocco.toUpperCase();
 
+  const { data: partecipanteRow } = await supabase
+  .from("partecipanti")
+  .select("id")
+  .eq("nome", nomePartecipante)
+  .single();
+
+const { data: metaFormazione } = partecipanteRow
+  ? await supabase
+      .from("formazioni_meta")
+      .select("created_at")
+      .eq("partecipante_id", partecipanteRow.id)
+      .eq("giornata", giornataNorm)
+      .eq("blocco", bloccoNorm)
+      .maybeSingle()
+  : { data: null };
+
   const { data: statoCompetizione } = await supabase
   .from("v_competizioni_concluse")
   .select("conclusa")
@@ -302,6 +318,16 @@ const competizioneConclusa =
 
       <header className="mt-5 mb-6">
         <h1 className="text-4xl font-bold">{nomePartecipante}</h1>
+
+<div
+  className={`inline-block rounded-full px-3 py-1 text-sm font-semibold mb-4 ${
+    competizioneConclusa
+      ? "bg-green-100 text-green-700"
+      : "bg-yellow-100 text-yellow-700"
+  }`}
+>
+  {competizioneConclusa ? "Competizione conclusa" : "Competizione in corso"}
+</div>
 
         <div className="text-slate-600 mt-1">
           Formazione {giornataNorm} {bloccoNorm}
