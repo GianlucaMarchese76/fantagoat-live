@@ -96,15 +96,15 @@ export default function RegolamentoPage() {
         <p>
           Al termine dei gironi le rose vengono azzerate e ricostruite
           sulla base di istruzioni comunicate in seguito. I punti della
-          fase a gironi restano acquisiti.
+          fase a gironi restano acquisiti. Le fasi a elimnazione diretta avranno un peso crescente sulla base del prospetto seguente (es. un gol in finale varrà 6 punti)
         </p>
 
         <ul className="list-disc pl-5 space-y-1">
-          <li>Sedicesimi AF e GL: x1,2</li>
-          <li>Ottavi: x1,4</li>
-          <li>Quarti: x1,6</li>
-          <li>Semifinali: x1,8</li>
-          <li>Terzo posto: x1,2</li>
+          <li>Sedicesimi AF e GL: x1</li>
+          <li>Ottavi: x1,2</li>
+          <li>Quarti: x1,4</li>
+          <li>Semifinali: x1,6</li>
+          <li>Terzo posto: x1</li>
           <li>Finale: x2</li>
         </ul>
       </section>

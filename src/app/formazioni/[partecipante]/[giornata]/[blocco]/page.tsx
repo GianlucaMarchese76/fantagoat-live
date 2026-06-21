@@ -319,6 +319,17 @@ const competizioneConclusa =
       <header className="mt-5 mb-6">
         <h1 className="text-4xl font-bold">{nomePartecipante}</h1>
 
+        {metaFormazione?.created_at && (
+  <div className="text-sm text-slate-500 mt-1 mb-3">
+    Ultimo salvataggio:{" "}
+    {new Date(metaFormazione.created_at).toLocaleString("it-IT", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "Europe/Rome",
+    })}
+  </div>
+)}
+
 <div
   className={`inline-block rounded-full px-3 py-1 text-sm font-semibold mb-4 ${
     competizioneConclusa
@@ -326,7 +337,7 @@ const competizioneConclusa =
       : "bg-yellow-100 text-yellow-700"
   }`}
 >
-  {competizioneConclusa ? "Competizione conclusa" : "Competizione in corso"}
+  {competizioneConclusa ? "Giornata conclusa" : "Giornata in corso"}
 </div>
 
         <div className="text-slate-600 mt-1">
