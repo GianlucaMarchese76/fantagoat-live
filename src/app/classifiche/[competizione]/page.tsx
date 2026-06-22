@@ -23,10 +23,52 @@ export default async function ClassificaPage({
   const isGenerale = competizioneNorm.toLowerCase() === "generale";
 
   if (isGenerale) {
-    const { data, error } = await supabase
-      .from("v_classifica_generale")
+  const { data: competizioni, error } = await supabase
+    .from("v_competizioni_concluse")
+    .select("*")
+    .eq("conclusa", true)
+    .order("giornata")
+    .order("blocco");
+
+  const generaleMap = new Map<string, number>();
+
+  for (const c of competizioni ?? []) {
+    const { data: rows } = await supabase
+      .from("v_formazioni_dettaglio_live")
       .select("*")
-      .order("posizione");
+      .eq("giornata", c.giornata)
+      .eq("blocco", c.blocco);
+
+    const gruppi = new Map<string, any[]>();
+
+    for (const row of rows ?? []) {
+      if (!gruppi.has(row.partecipante)) {
+        gruppi.set(row.partecipante, []);
+      }
+
+      gruppi.get(row.partecipante)?.push(row);
+    }
+
+    for (const [partecipante, righe] of gruppi.entries()) {
+      const punti = calcolaTotaleFormazione(righe);
+
+      generaleMap.set(
+        partecipante,
+        (generaleMap.get(partecipante) ?? 0) + Number(punti)
+      );
+    }
+  }
+
+  const data = Array.from(generaleMap.entries())
+    .map(([partecipante, punti]) => ({
+      partecipante,
+      punti,
+    }))
+    .sort((a, b) => b.punti - a.punti)
+    .map((r, index) => ({
+      ...r,
+      posizione: index + 1,
+    }));
 
     return (
       <main className="min-h-screen p-4 bg-slate-100">
@@ -106,16 +148,11 @@ const competizioneConclusa =
 
   const classifica = Array.from(gruppi.entries())
     .map(([partecipante, rows]) => {
-      const giornataConclusa = rows.every(
-        (g) =>
-          g.stato_giocatore === "ha_voto" ||
-          g.stato_giocatore === "non_ha_giocato"
-      );
 
       const rowsCalcolo = rows.map((r) => ({
         ...r,
-        voto: giornataConclusa ? r.voto : r.voto_live,
-        fantapunti: giornataConclusa
+        voto: competizioneConclusa ? r.voto : r.voto_live,
+        fantapunti: competizioneConclusa
           ? r.fantapunti
           : r.fantapunti_live,
       }));
@@ -134,7 +171,7 @@ const competizioneConclusa =
 
       return {
         partecipante,
-        punti: giornataConclusa
+        punti: competizioneConclusa
           ? calcolaTotaleFormazione(rowsCalcolo)
           : puntiLive,
       };
