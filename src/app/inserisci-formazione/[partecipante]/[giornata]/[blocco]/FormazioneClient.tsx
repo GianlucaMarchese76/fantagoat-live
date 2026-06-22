@@ -133,9 +133,10 @@ const capitanoIniziale =
 const viceIniziale =
   formazioneEsistente.find((r) => r.is_vice)?.giocatore_id ?? "";
 
-const [modulo, setModulo] = useState(
-  metaEsistente?.modulo_dichiarato ?? "M_352"
-);
+  const moduloIniziale =
+  metaEsistente?.modulo_dichiarato ?? "M_352";
+
+const [modulo, setModulo] = useState(moduloIniziale);
 
 const [titolari, setTitolari] = useState<string[]>(titolariIniziali);
 
@@ -144,6 +145,14 @@ const [panchina, setPanchina] = useState<string[]>(panchinaIniziale);
 const [capitano, setCapitano] = useState(capitanoIniziale);
 
 const [vice, setVice] = useState(viceIniziale);
+
+function ripristinaFormazioneSalvata() {
+  setModulo(moduloIniziale);
+  setTitolari([...titolariIniziali]);
+  setPanchina([...panchinaIniziale]);
+  setCapitano(capitanoIniziale);
+  setVice(viceIniziale);
+}
 
   const ruoliTitolari = MODULI[modulo].ruoli;
 
@@ -286,7 +295,7 @@ function cambiaPanchinaro(index: number, nuovoId: string) {
                 className="w-full rounded-xl border p-3"
                 required
               >
-                <option value="">Seleziona giocatore</option>
+                <option value="">✕ Svuota questo slot</option>
 
                 {opzioniDisponibili(ruolo, titolari[index]).map((g) => {
                   const partita = avversari.get(g.nazionale);
@@ -338,7 +347,7 @@ function cambiaPanchinaro(index: number, nuovoId: string) {
                 className="w-full rounded-xl border p-3"
                 required
               >
-                <option value="">Seleziona giocatore</option>
+                <option value="">✕ Svuota questo slot</option>
 
                 {rosa
   .filter((g) => (index < 3 ? g.ruolo === "P" : true))
@@ -351,12 +360,12 @@ function cambiaPanchinaro(index: number, nuovoId: string) {
                   const partita = avversari.get(g.nazionale);
 
                   return (
-                    <option key={g.giocatore_id} value={g.giocatore_id}>
-                      {g.giocatore} · {g.nazionale}
-                      {partita?.nome_avversaria
-                        ? ` vs ${partita.nome_avversaria}`
-                        : ""}
-                    </option>
+                  <option key={g.giocatore_id} value={g.giocatore_id}>
+  [{g.ruolo}] {g.giocatore} · {g.nazionale}
+  {partita?.nome_avversaria
+    ? ` vs ${partita.nome_avversaria}`
+    : ""}
+</option>
                   );
                 })}
               </select>
@@ -418,12 +427,22 @@ function cambiaPanchinaro(index: number, nuovoId: string) {
   </div>
 )}
 
-      <button
-        type="submit"
-        className="w-full rounded-2xl bg-blue-600 text-white font-bold py-4 text-lg"
-      >
-        Salva formazione
-      </button>
+     <div className="grid gap-3">
+  <button
+    type="button"
+    onClick={ripristinaFormazioneSalvata}
+    className="w-full rounded-2xl bg-slate-200 text-slate-800 font-bold py-4 text-lg"
+  >
+    ↩ Ripristina formazione salvata
+  </button>
+
+  <button
+    type="submit"
+    className="w-full rounded-2xl bg-blue-600 text-white font-bold py-4 text-lg"
+  >
+    Salva formazione
+  </button>
+</div>
     </form>
   );
 }
