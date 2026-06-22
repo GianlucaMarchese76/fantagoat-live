@@ -78,7 +78,7 @@ export default async function Home() {
 
   const { data: partite } = await supabase
     .from("calendario_partite")
-    .select("giornata, blocco, kickoff")
+    .select("giornata, blocco, kickoff, fine_partita")
     .order("kickoff");
 
   const now = new Date();
@@ -160,6 +160,23 @@ export default async function Home() {
       )
     : [];
 
+  const partiteLiveBlocco = competizioneLive
+    ? (partite ?? []).filter(
+        (p) =>
+          p.giornata === competizioneLive.giornata &&
+          p.blocco === competizioneLive.blocco
+      )
+    : [];
+
+  const partiteGiocateLive = partiteLiveBlocco.filter(
+    (p) => p.fine_partita && new Date(p.fine_partita) <= now
+  ).length;
+
+  const partiteTotaliLive = partiteLiveBlocco.length;
+
+  const partiteMancantiLive =
+    partiteTotaliLive - partiteGiocateLive;
+
   return (
     <main className="min-h-screen p-4 bg-slate-100">
       <header className="mb-6">
@@ -189,7 +206,15 @@ export default async function Home() {
               {generale.slice(0, 4).map((r) => (
                 <div
                   key={r.partecipante}
-                  className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3"
+                  className={`flex items-center justify-between rounded-xl px-4 py-3 ${
+                    r.posizione === 1
+                      ? "bg-amber-50"
+                      : r.posizione === 2
+                      ? "bg-slate-100"
+                      : r.posizione === 3
+                      ? "bg-orange-50"
+                      : "bg-slate-50"
+                  }`}
                 >
                   <div className="font-semibold">
                     {r.posizione}. {r.partecipante}
@@ -217,35 +242,43 @@ export default async function Home() {
 
             {competizioneLive ? (
               <>
-                <div className="text-slate-600 mb-3">
+                <div className="text-slate-600">
                   {labelCompetizione(
                     competizioneLive.giornata,
                     competizioneLive.blocco
                   )}
                 </div>
 
+                <div className="text-xs text-slate-500 mb-3">
+                  Aggiornata a {partiteGiocateLive} partite su{" "}
+                  {partiteTotaliLive}
+                  {partiteMancantiLive > 0
+                    ? ` · Mancano ${partiteMancantiLive} partite`
+                    : " · Giornata completata"}
+                </div>
+
                 <div className="grid gap-2">
                   {classificaLive.slice(0, 4).map((r) => (
-  <Link
-    key={r.partecipante}
-    href={`/formazioni/${r.partecipante}/${competizioneLive.giornata}/${competizioneLive.blocco}`}
-    className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 hover:bg-slate-100 transition"
-  >
-    <div>
-      <div className="font-semibold">
-        {r.posizione}. {r.partecipante}
-      </div>
+                    <Link
+                      key={r.partecipante}
+                      href={`/formazioni/${r.partecipante}/${competizioneLive.giornata}/${competizioneLive.blocco}`}
+                      className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 hover:bg-slate-100 transition"
+                    >
+                      <div>
+                        <div className="font-semibold">
+                          {r.posizione}. {r.partecipante}
+                        </div>
 
-      <div className="text-xs text-blue-600">
-        Vedi formazione →
-      </div>
-    </div>
+                        <div className="text-xs text-blue-600">
+                          Vedi formazione →
+                        </div>
+                      </div>
 
-    <div className="text-xl font-bold tabular-nums">
-      {r.punti}
-    </div>
-  </Link>
-))}
+                      <div className="text-xl font-bold tabular-nums">
+                        {r.punti}
+                      </div>
+                    </Link>
+                  ))}
                 </div>
 
                 <a
@@ -316,7 +349,7 @@ export default async function Home() {
             </div>
           </a>
 
-                   <a
+          <a
             href="/rose"
             className="bg-white rounded-2xl shadow p-4 block"
           >
@@ -346,7 +379,6 @@ export default async function Home() {
           </div>
         </a>
       </section>
-      
     </main>
   );
 }
