@@ -12,8 +12,37 @@ export function numero(v: any) {
   return Number(v ?? 0);
 }
 
+export function votoDaUsare(g: any) {
+  if (
+    g.stato_giocatore === "partita_da_giocare" ||
+    g.stato_giocatore === "in_campo" ||
+    g.stato_giocatore === "in_attesa_voto"
+  ) {
+    return 6;
+  }
+
+  return numero(g.voto_live ?? g.voto);
+}
+
 export function haVoto(g: any) {
-  return !(numero(g.voto) === 0 && numero(g.fantapunti) === 0);
+  return g.stato_giocatore === "ha_voto";
+}
+
+function puoEntrareLive(g: any) {
+  return (
+    g.stato_giocatore === "ha_voto" ||
+    g.stato_giocatore === "partita_da_giocare" ||
+    g.stato_giocatore === "in_campo" ||
+    g.stato_giocatore === "in_attesa_voto"
+  );
+}
+
+function giornataConclusa(giocatori: any[]) {
+  return giocatori.every(
+    (g) =>
+      g.stato_giocatore === "ha_voto" ||
+      g.stato_giocatore === "non_ha_giocato"
+  );
 }
 
 function moduloDaGiocatori(giocatori: any[]) {
@@ -28,13 +57,29 @@ function moduloValido(giocatori: any[]) {
   return moduliValidi.includes(moduloDaGiocatori(giocatori));
 }
 
+function fantapuntiDaUsare(g: any) {
+  if (
+    g.stato_giocatore === "partita_da_giocare" ||
+    g.stato_giocatore === "in_campo" ||
+    g.stato_giocatore === "in_attesa_voto"
+  ) {
+    return 6;
+  }
+
+  return numero(g.fantapunti_live ?? g.fantapunti);
+}
+
 export function calcolaFormazioneEffettiva(
   titolari: any[],
   panchina: any[]
 ) {
+  const conclusa = giornataConclusa([...titolari, ...panchina]);
+
   const effettivi = titolari.map((g) => ({
     ...g,
-    fantapunti_calcolo: numero(g.fantapunti),
+    fantapunti_calcolo: fantapuntiDaUsare(g),
+    stato: "titolare",
+    sostituisce: null,
   }));
 
   const panchinaOrdinata = [...panchina].sort(
@@ -45,8 +90,8 @@ export function calcolaFormazioneEffettiva(
   const sostituzioni: any[] = [];
 
   const titolariDaSostituire = effettivi
-    .filter((g) => g.da_sostituire)
-    .sort((a, b) => numero(a.ordine) - numero(b.ordine));
+  .filter((g) => g.stato_giocatore === "non_ha_giocato")
+  .sort((a, b) => numero(a.ordine) - numero(b.ordine));
 
   for (const titolare of titolariDaSostituire) {
     const indexTitolare = effettivi.findIndex(
@@ -62,13 +107,13 @@ export function calcolaFormazioneEffettiva(
         sostituto = panchinaOrdinata.find(
           (p) =>
             p.ruolo === "P" &&
-            haVoto(p) &&
-            !usati.has(p.giocatore_id)
+puoEntrareLive(p) &&
+!usati.has(p.giocatore_id)
         );
       } else {
         for (const p of panchinaOrdinata) {
           if (p.ruolo === "P") continue;
-          if (!haVoto(p)) continue;
+          if (!puoEntrareLive(p)) continue;
           if (usati.has(p.giocatore_id)) continue;
 
           const prova = [...effettivi];
@@ -87,17 +132,31 @@ export function calcolaFormazioneEffettiva(
 
       effettivi[indexTitolare] = {
         ...sostituto,
-        fantapunti_calcolo: numero(sostituto.fantapunti),
+        fantapunti_calcolo: fantapuntiDaUsare(sostituto),
+        stato: "entrato",
+        sostituisce: titolare.giocatore,
       };
 
-      sostituzioni.push({ out: titolare, in: sostituto });
+      sostituzioni.push({
+        out: titolare,
+        in: sostituto,
+        tipo: "sostituzione",
+      });
     } else {
+      const puntiUfficio = titolare.ruolo === "P" ? 3 : 4;
+
       effettivi[indexTitolare] = {
         ...titolare,
-        fantapunti_calcolo: titolare.ruolo === "P" ? 3 : 4,
+        fantapunti_calcolo: puntiUfficio,
+        stato: "ufficio",
       };
 
-      sostituzioni.push({ out: titolare, in: null });
+      sostituzioni.push({
+        out: titolare,
+        in: null,
+        tipo: "ufficio",
+        punti: puntiUfficio,
+      });
     }
   }
 
@@ -112,36 +171,36 @@ export function calcolaFormazioneEffettiva(
   };
 }
 
-function calcolaVotoCapitano(effettivi: any[]) {
+export function calcolaVotoCapitano(effettivi: any[]) {
   const capitano = effettivi.find((g) => g.is_capitano === true);
 
   if (capitano && haVoto(capitano)) {
-    return numero(capitano.voto) - 6;
+    return votoDaUsare(capitano) - 6;
   }
 
   const vice = effettivi.find((g) => g.is_vice === true);
 
   if (vice && haVoto(vice)) {
-    return numero(vice.voto) - 6;
+    return votoDaUsare(vice) - 6;
   }
 
   return 0;
 }
 
-function calcolaModDifesa(effettivi: any[]) {
+export function calcolaModDifesa(effettivi: any[]) {
   const portiere = effettivi.find((g) => g.ruolo === "P");
 
   const difensori = effettivi
     .filter((g) => g.ruolo === "D")
-    .sort((a, b) => numero(b.voto) - numero(a.voto));
+    .sort((a, b) => votoDaUsare(b) - votoDaUsare(a));
 
   if (!portiere || difensori.length < 3) return 0;
 
   const migliori3 = difensori.slice(0, 3);
 
   const media =
-    (numero(portiere.voto) +
-      migliori3.reduce((sum, g) => sum + numero(g.voto), 0)) /
+    (votoDaUsare(portiere) +
+      migliori3.reduce((sum, g) => sum + votoDaUsare(g), 0)) /
     4;
 
   if (media >= 7) return 5;
@@ -153,17 +212,17 @@ function calcolaModDifesa(effettivi: any[]) {
   return 0;
 }
 
-function calcolaModCentrocampo(effettivi: any[]) {
+export function calcolaModCentrocampo(effettivi: any[]) {
   const centrocampisti = effettivi
     .filter((g) => g.ruolo === "C")
-    .sort((a, b) => numero(b.voto) - numero(a.voto));
+    .sort((a, b) => votoDaUsare(b) - votoDaUsare(a));
 
   if (centrocampisti.length < 3) return 0;
 
   const migliori3 = centrocampisti.slice(0, 3);
 
   const media =
-    migliori3.reduce((sum, g) => sum + numero(g.voto), 0) / 3;
+    migliori3.reduce((sum, g) => sum + votoDaUsare(g), 0) / 3;
 
   if (media >= 6.75) return 3;
   if (media >= 6.5) return 2;
@@ -172,7 +231,7 @@ function calcolaModCentrocampo(effettivi: any[]) {
   return 0;
 }
 
-function calcolaBonusModulo(moduloFinale: string) {
+export function calcolaBonusModulo(moduloFinale: string) {
   const bonus: Record<string, number> = {
     "3-4-3": -1,
     "3-5-2": 2,

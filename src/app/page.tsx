@@ -13,19 +13,6 @@ function labelCompetizione(giornata: string, blocco: string) {
   return `${giornata} ${blocco}`.trim();
 }
 
-function calcolaLive(rows: any[]) {
-  const bonusModulo = Number(rows[0]?.bonus_malus_modulo ?? 0);
-
-  return (
-    rows
-      .filter((g) => g.tipo === "Titolare")
-      .reduce(
-        (totale, g) => totale + Number(g.fantapunti_live ?? 0),
-        0
-      ) + bonusModulo
-  );
-}
-
 async function calcolaClassificaCompetizione(
   giornata: string,
   blocco: string,
@@ -57,9 +44,7 @@ async function calcolaClassificaCompetizione(
 
       return {
         partecipante,
-        punti: definitiva
-          ? calcolaTotaleFormazione(rowsCalcolo)
-          : calcolaLive(rowsCalcolo),
+        punti: calcolaTotaleFormazione(rowsCalcolo),
       };
     })
     .sort((a, b) => b.punti - a.punti)
@@ -216,9 +201,12 @@ export default async function Home() {
                       : "bg-slate-50"
                   }`}
                 >
-                  <div className="font-semibold">
-                    {r.posizione}. {r.partecipante}
-                  </div>
+                  <Link
+  href={`/partecipanti/${encodeURIComponent(r.partecipante)}`}
+  className="font-semibold hover:text-blue-600"
+>
+  {r.posizione}. {r.partecipante}
+</Link>
 
                   <div className="text-xl font-bold tabular-nums">
                     {r.punti}

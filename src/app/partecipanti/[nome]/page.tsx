@@ -31,7 +31,24 @@ export default async function PartecipantePage({
         >
           <div className="text-xl font-bold">Rosa G-L</div>
           <div className="text-slate-600">Apri rosa gruppo G-L</div>
+
         </a>
+
+<a
+  href={`/partecipanti/${encodeURIComponent(
+    partecipante
+  )}/competizioni`}
+  className="block bg-white rounded-xl p-5 shadow"
+>
+  <div className="text-xl font-bold">
+    Classifica Generale
+  </div>
+
+  <div className="text-slate-600">
+    Dettaglio competizioni e punteggi
+  </div>
+</a>
+
       </div>
     </main>
   );

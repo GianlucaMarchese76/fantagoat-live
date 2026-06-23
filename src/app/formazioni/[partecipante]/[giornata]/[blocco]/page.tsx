@@ -1,5 +1,13 @@
 import { supabase } from "../../../../../lib/supabase";
 
+import {
+  calcolaFormazioneEffettiva,
+  calcolaVotoCapitano,
+  calcolaModDifesa,
+  calcolaModCentrocampo,
+  calcolaBonusModulo,
+} from "../../../../../lib/calcoloFormazione";
+
 const moduliValidi = [
   "3-4-3",
   "3-5-2",
@@ -31,6 +39,15 @@ function haVoto(g: any) {
   return g.stato_giocatore === "ha_voto";
 }
 
+function puoEntrareLive(g: any) {
+  return (
+    g.stato_giocatore === "ha_voto" ||
+    g.stato_giocatore === "partita_da_giocare" ||
+    g.stato_giocatore === "in_campo" ||
+    g.stato_giocatore === "in_attesa_voto"
+  );
+}
+
 function giornataConclusa(giocatori: any[]) {
   return giocatori.every(
     (g) =>
@@ -49,196 +66,6 @@ function moduloDaGiocatori(giocatori: any[]) {
 
 function moduloValido(giocatori: any[]) {
   return moduliValidi.includes(moduloDaGiocatori(giocatori));
-}
-
-function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
-  const conclusa = giornataConclusa([...titolari, ...panchina]);
-  
-  const effettivi = titolari.map((g) => ({
-    ...g,
-   fantapunti_calcolo: numero(g.fantapunti_live ?? g.fantapunti),
-    stato: "titolare",
-    sostituisce: null,
-  }));
-
-  const panchinaOrdinata = [...panchina].sort(
-    (a, b) => numero(a.ordine) - numero(b.ordine)
-  );
-
-  const usati = new Set<string>();
-  const sostituzioni: any[] = [];
-
-  if (!ABILITA_SOSTITUZIONI) {
-  return {
-    effettivi,
-    sostituzioni,
-    moduloFinale: moduloDaGiocatori(effettivi),
-    totaleGiocatori: effettivi.reduce(
-      (sum, g) => sum + numero(g.fantapunti_calcolo),
-      0
-    ),
-  };
-}
-
-const titolariDaSostituire =
-  ABILITA_SOSTITUZIONI && conclusa
-  ? effettivi
-      .filter((g) => g.stato_giocatore === "non_ha_giocato")
-      .sort((a, b) => numero(a.ordine) - numero(b.ordine))
-  : [];
-
-  for (const titolare of titolariDaSostituire) {
-    const indexTitolare = effettivi.findIndex(
-      (g) => g.giocatore_id === titolare.giocatore_id
-    );
-
-    if (indexTitolare === -1) continue;
-
-    let sostituto = null;
-
-    if (sostituzioni.length < 5) {
-      if (titolare.ruolo === "P") {
-        sostituto = panchinaOrdinata.find(
-          (p) =>
-            p.ruolo === "P" &&
-            haVoto(p) &&
-            !usati.has(p.giocatore_id)
-        );
-      } else {
-        for (const p of panchinaOrdinata) {
-          if (p.ruolo === "P") continue;
-          if (!haVoto(p)) continue;
-          if (usati.has(p.giocatore_id)) continue;
-
-          const prova = [...effettivi];
-          prova[indexTitolare] = p;
-
-          if (moduloValido(prova)) {
-            sostituto = p;
-            break;
-          }
-        }
-      }
-    }
-
-    if (sostituto) {
-      usati.add(sostituto.giocatore_id);
-
-      effettivi[indexTitolare] = {
-        ...sostituto,
-       fantapunti_calcolo: numero(
-  sostituto.fantapunti_live ?? sostituto.fantapunti
-),
-        stato: "entrato",
-        sostituisce: titolare.giocatore,
-      };
-
-      sostituzioni.push({
-        out: titolare,
-        in: sostituto,
-        tipo: "sostituzione",
-      });
-    } else {
-      const puntiUfficio = titolare.ruolo === "P" ? 3 : 4;
-
-      effettivi[indexTitolare] = {
-        ...titolare,
-        fantapunti_calcolo: puntiUfficio,
-        stato: "ufficio",
-      };
-
-      sostituzioni.push({
-        out: titolare,
-        in: null,
-        tipo: "ufficio",
-        punti: puntiUfficio,
-      });
-    }
-  }
-
-  return {
-    effettivi,
-    sostituzioni,
-    moduloFinale: moduloDaGiocatori(effettivi),
-    totaleGiocatori: effettivi.reduce(
-      (sum, g) => sum + numero(g.fantapunti_calcolo),
-      0
-    ),
-  };
-}
-
-function calcolaVotoCapitano(effettivi: any[]) {
-  const capitano = effettivi.find((g) => g.is_capitano === true);
-
-  if (capitano && haVoto(capitano)) {
-    return votoDaUsare(capitano) - 6;
-  }
-
-  const vice = effettivi.find((g) => g.is_vice === true);
-
-  if (vice && haVoto(vice)) {
-    return votoDaUsare(vice) - 6;
-  }
-
-  return 0;
-}
-
-function calcolaModDifesa(effettivi: any[]) {
-  const portiere = effettivi.find((g) => g.ruolo === "P");
-
-  const difensori = effettivi
-    .filter((g) => g.ruolo === "D")
-    .sort((a, b) => numero(b.voto) - numero(a.voto));
-
-  if (!portiere || difensori.length < 3) return 0;
-
-  const migliori3 = difensori.slice(0, 3);
-
-  const media =
-    (numero(portiere.voto) +
-      migliori3.reduce((sum, g) => sum + votoDaUsare(g), 0)) /
-    4;
-
-  if (media >= 7) return 5;
-  if (media >= 6.75) return 4;
-  if (media >= 6.5) return 3;
-  if (media >= 6.25) return 2;
-  if (media >= 6) return 1;
-
-  return 0;
-}
-
-function calcolaModCentrocampo(effettivi: any[]) {
-  const centrocampisti = effettivi
-    .filter((g) => g.ruolo === "C")
-    .sort((a, b) => numero(b.voto) - numero(a.voto));
-
-  if (centrocampisti.length < 3) return 0;
-
-  const migliori3 = centrocampisti.slice(0, 3);
-
-  const media =
-    migliori3.reduce((sum, g) => sum + votoDaUsare(g), 0) / 3;
-
-  if (media >= 6.75) return 3;
-  if (media >= 6.5) return 2;
-  if (media >= 6.25) return 1;
-
-  return 0;
-}
-
-function calcolaBonusModulo(moduloFinale: string) {
-  const bonus: Record<string, number> = {
-    "3-4-3": -1,
-    "3-5-2": 2,
-    "4-3-3": -1,
-    "4-4-2": 0,
-    "4-5-1": 2,
-    "5-3-2": 2,
-    "5-4-1": 2,
-  };
-
-  return bonus[moduloFinale] ?? 0;
 }
 
 export default async function FormazionePage({
@@ -473,12 +300,6 @@ const competizioneConclusa =
                     ENTRATO PER {g.sostituisce}
                   </div>
                 )}
-
-             {g.stato === "ufficio" && g.stato_giocatore === "non_ha_giocato" && (
-  <div className="text-xs font-bold text-red-600 mt-1">
-    NON HA GIOCATO
-  </div>
-)}
 </div>
               <div className="text-right">
                 <div
@@ -536,7 +357,7 @@ const competizioneConclusa =
                   <div className="font-semibold">{s.out.giocatore}</div>
 
                   <div className="text-sm text-red-600 font-bold">
-                    Nessun sostituto valido · {s.punti} d&apos;ufficio
+                    Nessun sostituto valido
                   </div>
                 </>
               )}
@@ -566,7 +387,42 @@ const competizioneConclusa =
 
                 <div className="text-sm text-slate-500">
                   {g.ruolo} - {g.nazionale}
+                   {g.avversario && (
+    <span className="ml-2 text-slate-400">
+      vs. {g.avversario}
+    </span>
+  )}
                 </div>
+
+{g.stato_giocatore === "partita_da_giocare" && (
+  <div className="text-xs font-semibold text-slate-400 mt-1">
+    ⚪ Partita da giocare
+  </div>
+)}
+
+{g.stato_giocatore === "in_campo" && (
+  <div className="text-xs font-semibold text-green-600 mt-1">
+    🟢 In campo
+  </div>
+)}
+
+{g.stato_giocatore === "in_attesa_voto" && (
+  <div className="text-xs font-semibold text-yellow-600 mt-1">
+    🟡 In attesa del voto
+  </div>
+)}
+
+{g.stato_giocatore === "non_ha_giocato" && (
+  <div className="text-xs font-semibold text-red-600 mt-1">
+    🔴 Non ha giocato
+  </div>
+)}
+
+{g.stato_giocatore === "ha_voto" && (
+  <div className="text-xs font-semibold text-blue-600 mt-1">
+    ✅ Voto disponibile
+  </div>
+)}
               </div>
 
               <div className="text-right">
