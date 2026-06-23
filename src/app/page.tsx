@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabase } from "../lib/supabase";
 import { calcolaTotaleFormazione } from "../lib/calcoloFormazione";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -164,14 +165,28 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">
-      <header className="mb-6">
-        <h1 className="text-4xl font-bold">🏆 FantaGOAT Live</h1>
+      <header className="mb-8">
+  <div className="flex items-center gap-4">
+    <Image
+      src="/logo-fantagoat-2026.png"
+      alt="FantaGOAT"
+      width={80}
+      height={80}
+      priority
+      className="rounded-xl"
+    />
 
-        <p className="text-slate-600 mt-2">
-          Classifiche, rose e formazioni aggiornate.
-        </p>
-      </header>
+    <div>
+      <h1 className="text-3xl md:text-5xl font-black">
+        FantaGOAT Live
+      </h1>
 
+      <p className="text-slate-600">
+        Fantacalcio Live 2026
+      </p>
+    </div>
+  </div>
+</header>
       <section className="mb-8">
         <h2 className="text-sm font-bold text-slate-500 mb-3">
           CLASSIFICHE
@@ -184,7 +199,7 @@ export default async function Home() {
             </h3>
 
             <div className="text-sm text-slate-500 mb-3">
-              Totale complessivo giornate concluse.
+              Totale complessivo giornate concluse
             </div>
 
             <div className="grid gap-2">
