@@ -1,58 +1,57 @@
 import Link from "next/link";
 import { supabase } from "../lib/supabase";
-import { calcolaTotaleFormazione } from "../lib/calcoloFormazione";
+import {
+  calcolaGenerale,
+  labelCompetizione,
+  codiceCompetizione,
+  statoCompetizione,
+  getClassificaCompetizione,
+  creaSlug,
+} from "../lib/fantagoat";
 import Image from "next/image";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function labelCompetizione(giornata: string, blocco: string) {
-  if (giornata.startsWith("G")) {
-    return `Giornata ${giornata.slice(1)} ${blocco}`;
-  }
+async function aggiungiPartecipante(formData: FormData) {
+  "use server";
 
-  return `${giornata} ${blocco}`.trim();
-}
+  const nome = String(formData.get("nome") ?? "").trim();
+  if (!nome) return;
 
-async function calcolaClassificaCompetizione(
-  giornata: string,
-  blocco: string,
-  definitiva: boolean
-) {
-  const { data } = await supabase
-    .from("v_formazioni_dettaglio_live")
-    .select("*")
-    .eq("giornata", giornata)
-    .eq("blocco", blocco);
+  const slug = creaSlug(nome);
 
-  const gruppi = new Map<string, any[]>();
+  await supabase.from("partecipanti").insert({
+    nome,
+    slug,
+    attivo: true,
+  });
 
-  for (const row of data ?? []) {
-    if (!gruppi.has(row.partecipante)) {
-      gruppi.set(row.partecipante, []);
-    }
+  const { data: partite } = await supabase
+    .from("calendario_partite")
+    .select("giornata, blocco, kickoff")
+    .order("kickoff");
 
-    gruppi.get(row.partecipante)?.push(row);
-  }
+  const now = new Date();
 
-  return Array.from(gruppi.entries())
-    .map(([partecipante, rows]) => {
-      const rowsCalcolo = rows.map((r) => ({
-        ...r,
-        voto: definitiva ? r.voto : r.voto_live,
-        fantapunti: definitiva ? r.fantapunti : r.fantapunti_live,
-      }));
+  const prossima = (partite ?? [])
+    .map((p) => ({
+      giornata: p.giornata,
+      blocco: p.blocco,
+      deadline: new Date(new Date(p.kickoff).getTime() - 5 * 60 * 1000),
+    }))
+    .filter((p) => now < p.deadline)
+    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
-      return {
-        partecipante,
-        punti: calcolaTotaleFormazione(rowsCalcolo),
-      };
-    })
-    .sort((a, b) => b.punti - a.punti)
-    .map((r, index) => ({
-      ...r,
-      posizione: index + 1,
-    }));
+  const codice = prossima
+    ? codiceCompetizione(prossima.giornata, prossima.blocco)
+    : "16ALTA";
+
+  revalidatePath("/");
+
+  redirect(`/crea-rosa/${codice}?partecipante=${slug}`);
 }
 
 export default async function Home() {
@@ -100,46 +99,31 @@ export default async function Home() {
   const competizioniChiuse =
     competizioni?.filter((c) => c.conclusa) ?? [];
 
-  const generaleMap = new Map<string, number>();
+  const generale = await calcolaGenerale({
+  competizioni: competizioniChiuse,
+  getClassifica: (giornata, blocco, definitiva) =>
+    getClassificaCompetizione(
+      supabase,
+      giornata,
+      blocco,
+      definitiva
+    ),
+});
 
-  for (const c of competizioniChiuse) {
-    const classifica = await calcolaClassificaCompetizione(
-      c.giornata,
-      c.blocco,
-      true
-    );
+const competizioneLive = Array.from(blocchi.values()).find((b) => {
+  const c = competizioni?.find(
+    (x) => x.giornata === b.giornata && x.blocco === b.blocco
+  );
 
-    for (const r of classifica) {
-      generaleMap.set(
-        r.partecipante,
-        (generaleMap.get(r.partecipante) ?? 0) + Number(r.punti)
-      );
-    }
-  }
-
-  const generale = Array.from(generaleMap.entries())
-    .map(([partecipante, punti]) => ({
-      partecipante,
-      punti,
-    }))
-    .sort((a, b) => b.punti - a.punti)
-    .map((r, index) => ({
-      ...r,
-      posizione: index + 1,
-    }));
-
-  const competizioneLive = Array.from(blocchi.values())
-    .filter((b) => now >= b.primaPartita)
-    .find((b) => {
-      const stato = competizioni?.find(
-        (c) => c.giornata === b.giornata && c.blocco === b.blocco
-      );
-
-      return stato && !stato.conclusa;
-    });
+  return (
+    c &&
+    statoCompetizione(c.conclusa, b.primaPartita, now) === "LIVE"
+  );
+});
 
   const classificaLive = competizioneLive
-    ? await calcolaClassificaCompetizione(
+    ? await getClassificaCompetizione(
+      supabase,
         competizioneLive.giornata,
         competizioneLive.blocco,
         false
@@ -187,6 +171,29 @@ export default async function Home() {
     </div>
   </div>
 </header>
+
+<section className="mb-8 bg-white rounded-2xl shadow p-4">
+  <h2 className="text-xl font-bold mb-3">
+    Aggiungi partecipante
+  </h2>
+
+  <form action={aggiungiPartecipante} className="grid gap-3">
+    <input
+      name="nome"
+      placeholder="Nome partecipante"
+      className="w-full rounded-xl border border-slate-300 p-3"
+      required
+    />
+
+    <button
+      type="submit"
+      className="rounded-xl bg-blue-600 text-white font-bold p-3"
+    >
+      Aggiungi e crea rosa
+    </button>
+  </form>
+</section>
+
       <section className="mb-8">
         <h2 className="text-sm font-bold text-slate-500 mb-3">
           CLASSIFICHE

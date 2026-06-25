@@ -1,6 +1,8 @@
 import { supabase } from "../../../lib/supabase";
-import { calcolaTotaleFormazione } from "../../../lib/calcoloFormazione";
-
+import {
+  calcolaGenerale,
+  getClassificaCompetizione,
+} from "../../../lib/fantagoat";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -30,45 +32,16 @@ export default async function ClassificaPage({
     .order("giornata")
     .order("blocco");
 
-  const generaleMap = new Map<string, number>();
-
-  for (const c of competizioni ?? []) {
-    const { data: rows } = await supabase
-      .from("v_formazioni_dettaglio_live")
-      .select("*")
-      .eq("giornata", c.giornata)
-      .eq("blocco", c.blocco);
-
-    const gruppi = new Map<string, any[]>();
-
-    for (const row of rows ?? []) {
-      if (!gruppi.has(row.partecipante)) {
-        gruppi.set(row.partecipante, []);
-      }
-
-      gruppi.get(row.partecipante)?.push(row);
-    }
-
-    for (const [partecipante, righe] of gruppi.entries()) {
-      const punti = calcolaTotaleFormazione(righe);
-
-      generaleMap.set(
-        partecipante,
-        (generaleMap.get(partecipante) ?? 0) + Number(punti)
-      );
-    }
-  }
-
-  const data = Array.from(generaleMap.entries())
-    .map(([partecipante, punti]) => ({
-      partecipante,
-      punti,
-    }))
-    .sort((a, b) => b.punti - a.punti)
-    .map((r, index) => ({
-      ...r,
-      posizione: index + 1,
-    }));
+ const data = await calcolaGenerale({
+  competizioni: competizioni ?? [],
+  getClassifica: (giornata, blocco, definitiva) =>
+    getClassificaCompetizione(
+      supabase,
+      giornata,
+      blocco,
+      definitiva
+    ),
+});
 
     return (
       <main className="min-h-screen p-4 bg-slate-100">
@@ -136,51 +109,12 @@ const competizioneConclusa =
     .eq("giornata", giornata)
     .eq("blocco", blocco);
 
-  const gruppi = new Map<string, any[]>();
-
-  for (const row of data ?? []) {
-    if (!gruppi.has(row.partecipante)) {
-      gruppi.set(row.partecipante, []);
-    }
-
-    gruppi.get(row.partecipante)?.push(row);
-  }
-
-  const classifica = Array.from(gruppi.entries())
-    .map(([partecipante, rows]) => {
-
-      const rowsCalcolo = rows.map((r) => ({
-        ...r,
-        voto: competizioneConclusa ? r.voto : r.voto_live,
-        fantapunti: competizioneConclusa
-          ? r.fantapunti
-          : r.fantapunti_live,
-      }));
-
-      const bonusModulo = Number(
-        rowsCalcolo[0]?.bonus_malus_modulo ?? 0
-      );
-
-      const puntiLive =
-        rowsCalcolo
-          .filter((g) => g.tipo === "Titolare")
-          .reduce(
-            (totale, g) => totale + Number(g.fantapunti ?? 0),
-            0
-          ) + bonusModulo;
-
-      return {
-        partecipante,
-        punti: competizioneConclusa
-          ? calcolaTotaleFormazione(rowsCalcolo)
-          : puntiLive,
-      };
-    })
-    .sort((a, b) => b.punti - a.punti)
-    .map((r, index) => ({
-      ...r,
-      posizione: index + 1,
-    }));
+  const classifica = await getClassificaCompetizione(
+  supabase,
+  giornata,
+  blocco,
+  competizioneConclusa
+);
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">

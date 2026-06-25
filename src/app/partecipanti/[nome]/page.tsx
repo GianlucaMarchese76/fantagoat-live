@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabase } from "../../../lib/supabase";
-import { calcolaTotaleFormazione } from "../../../lib/calcoloFormazione";
+import { calcolaTotaleFormazione } from "../../../lib/fantagoat";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

@@ -3,6 +3,21 @@ import { supabase } from "../../lib/supabase";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function labelCompetizione(giornata: string, blocco: string) {
+  if (giornata === "sedicesimi" && blocco === "1-8") return "Sedicesimi • Gare 1-8";
+  if (giornata === "sedicesimi" && blocco === "9-16") return "Sedicesimi • Gare 9-16";
+  if (giornata === "ottavi" && blocco === "1-4") return "Ottavi • Gare 1-4";
+  if (giornata === "ottavi" && blocco === "5-8") return "Ottavi • Gare 5-8";
+  if (giornata === "quarti") return "Quarti di finale";
+  if (giornata === "semifinale") return "Semifinali";
+  if (giornata === "terzo_posto") return "Finale 3° posto";
+  if (giornata === "finale") return "Finale";
+
+  if (giornata.startsWith("G")) return `${giornata}${blocco}`;
+
+  return `${giornata} ${blocco}`.trim();
+}
+
 export default async function InserisciFormazioneIndex() {
   const { data: partecipanti } = await supabase
     .from("partecipanti")
@@ -45,9 +60,9 @@ export default async function InserisciFormazioneIndex() {
         ← Home
       </a>
 
-      <h1 className="text-4xl font-bold mt-5 mb-2">
-        📝 Inserisci Formazione
-      </h1>
+      <h1 className="text-3xl font-black mt-5 mb-2 leading-tight">
+  📝 Inserisci formazione
+</h1>
 
       <p className="text-slate-600 mb-6">
         Seleziona partecipante e competizione ancora aperta.
@@ -68,8 +83,7 @@ export default async function InserisciFormazioneIndex() {
             className="bg-white rounded-2xl shadow p-4"
           >
             <h2 className="text-2xl font-bold">
-              {c.giornata}
-              {c.blocco}
+             {labelCompetizione(c.giornata, c.blocco)}
             </h2>
 
             <p className="text-sm text-slate-500 mb-3">

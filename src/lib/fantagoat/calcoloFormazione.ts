@@ -73,8 +73,6 @@ export function calcolaFormazioneEffettiva(
   titolari: any[],
   panchina: any[]
 ) {
-  const conclusa = giornataConclusa([...titolari, ...panchina]);
-
   const effettivi = titolari.map((g) => ({
     ...g,
     fantapunti_calcolo: fantapuntiDaUsare(g),
@@ -90,8 +88,8 @@ export function calcolaFormazioneEffettiva(
   const sostituzioni: any[] = [];
 
   const titolariDaSostituire = effettivi
-  .filter((g) => g.stato_giocatore === "non_ha_giocato")
-  .sort((a, b) => numero(a.ordine) - numero(b.ordine));
+    .filter((g) => g.stato_giocatore === "non_ha_giocato")
+    .sort((a, b) => numero(a.ordine) - numero(b.ordine));
 
   for (const titolare of titolariDaSostituire) {
     const indexTitolare = effettivi.findIndex(
@@ -107,8 +105,8 @@ export function calcolaFormazioneEffettiva(
         sostituto = panchinaOrdinata.find(
           (p) =>
             p.ruolo === "P" &&
-puoEntrareLive(p) &&
-!usati.has(p.giocatore_id)
+            puoEntrareLive(p) &&
+            !usati.has(p.giocatore_id)
         );
       } else {
         for (const p of panchinaOrdinata) {
@@ -172,13 +170,13 @@ puoEntrareLive(p) &&
 }
 
 export function calcolaVotoCapitano(effettivi: any[]) {
-  const capitano = effettivi.find((g) => g.is_capitano === true);
+  const capitano = effettivi.find((g) => g.is_capitano);
 
   if (capitano && haVoto(capitano)) {
     return votoDaUsare(capitano) - 6;
   }
 
-  const vice = effettivi.find((g) => g.is_vice === true);
+  const vice = effettivi.find((g) => g.is_vice);
 
   if (vice && haVoto(vice)) {
     return votoDaUsare(vice) - 6;
@@ -196,11 +194,11 @@ export function calcolaModDifesa(effettivi: any[]) {
 
   if (!portiere || difensori.length < 3) return 0;
 
-  const migliori3 = difensori.slice(0, 3);
-
   const media =
     (votoDaUsare(portiere) +
-      migliori3.reduce((sum, g) => sum + votoDaUsare(g), 0)) /
+      difensori
+        .slice(0, 3)
+        .reduce((s, g) => s + votoDaUsare(g), 0)) /
     4;
 
   if (media >= 7) return 5;
@@ -219,10 +217,10 @@ export function calcolaModCentrocampo(effettivi: any[]) {
 
   if (centrocampisti.length < 3) return 0;
 
-  const migliori3 = centrocampisti.slice(0, 3);
-
   const media =
-    migliori3.reduce((sum, g) => sum + votoDaUsare(g), 0) / 3;
+    centrocampisti
+      .slice(0, 3)
+      .reduce((s, g) => s + votoDaUsare(g), 0) / 3;
 
   if (media >= 6.75) return 3;
   if (media >= 6.5) return 2;
