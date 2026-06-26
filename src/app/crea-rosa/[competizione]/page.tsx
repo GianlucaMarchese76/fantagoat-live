@@ -81,6 +81,18 @@ export default async function CreaRosaCompetizionePage({
           .in("partita", partiteIds)
       : { data: [] };
 
+      const avversariByNazionale = new Map<string, string>();
+
+for (const p of partiteRaw ?? []) {
+  const nazionale = String(p.nazionale ?? "");
+  const avversaria = String(p.avversaria ?? "");
+
+  if (/^[A-Z]{3}$/.test(nazionale) && /^[A-Z]{3}$/.test(avversaria)) {
+    avversariByNazionale.set(nazionale, avversaria);
+    avversariByNazionale.set(avversaria, nazionale);
+  }
+}
+
   const ordinePartite = new Map(
     (competizionePartite ?? []).map((p) => [p.partita, p.ordine ?? 999])
   );
@@ -124,15 +136,16 @@ export default async function CreaRosaCompetizionePage({
       : { data: [] };
 
   const giocatoriNormalizzati =
-    giocatori?.map((g) => ({
-      id: g.id,
-      nome: g.nome,
-      ruolo: g.ruolo,
-      nazionale: g.nazionale,
-      quotazione_sedicesimi: Number(
-        (g as Record<string, unknown>)[campoQuotazione] ?? 0
-      ),
-    })) ?? [];
+  giocatori?.map((g) => ({
+    id: g.id,
+    nome: g.nome,
+    ruolo: g.ruolo,
+    nazionale: g.nazionale,
+    avversaria: avversariByNazionale.get(g.nazionale) ?? null,
+    quotazione_sedicesimi: Number(
+      (g as Record<string, unknown>)[campoQuotazione] ?? 0
+    ),
+  })) ?? [];
 
   const { data: rosaSalvata } = await supabase
     .from("rose_competizione")
@@ -146,14 +159,23 @@ export default async function CreaRosaCompetizionePage({
     idsRosaSalvata.includes(g.id)
   );
 
+  const { data: formazioneEsistente } = await supabase
+  .from("formazioni_competizione")
+  .select("giocatore_id, tipo, ordine, is_capitano, is_vice, modulo")
+  .eq("competizione_id", competizioneData.id)
+  .eq("partecipante_id", partecipanteData.id)
+  .order("tipo")
+  .order("ordine");
+
   return (
     <CreaRosaClient
-      competizione={competizioneData}
-      partecipante={partecipanteData}
-      giocatori={giocatoriNormalizzati}
-      rosaIniziale={rosaIniziale}
-      campoQuotazione={campoQuotazione}
-      partite={partiteFase}
-    />
+  competizione={competizioneData}
+  partecipante={partecipanteData}
+  giocatori={giocatoriNormalizzati}
+  rosaIniziale={rosaIniziale}
+  formazioneEsistente={formazioneEsistente ?? []}
+  campoQuotazione={campoQuotazione}
+  partite={partiteFase}
+/>
   );
 }

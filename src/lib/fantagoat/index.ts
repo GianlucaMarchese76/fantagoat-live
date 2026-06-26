@@ -8,3 +8,4 @@ export * from "./codiceCompetizione";
 export * from "./statoCompetizione";
 export * from "./getClassificaCompetizione";
 export * from "./creaSlug";
+export * from "./moduli";

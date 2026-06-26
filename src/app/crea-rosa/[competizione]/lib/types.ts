@@ -24,3 +24,11 @@ export type Partecipante = {
   nome: string;
   slug: string;
 };
+export type FormazioneCompetizioneSalvata = {
+  giocatore_id: number;
+  tipo: "titolare" | "panchina";
+  ordine: number;
+  is_capitano: boolean;
+  is_vice: boolean;
+  modulo: string;
+};

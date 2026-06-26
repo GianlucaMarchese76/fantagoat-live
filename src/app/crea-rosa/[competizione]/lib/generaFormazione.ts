@@ -1,5 +1,6 @@
 type GiocatoreRosa = {
   id: number;
+  nome?: string;
   ruolo: string;
   costo: number;
 };
@@ -13,7 +14,15 @@ export type FormazioneAutomatica = {
 };
 
 function ordinaPerCostoDecrescente(a: GiocatoreRosa, b: GiocatoreRosa) {
-  return Number(b.costo ?? 0) - Number(a.costo ?? 0);
+  const differenzaCosto = Number(b.costo ?? 0) - Number(a.costo ?? 0);
+
+  if (differenzaCosto !== 0) {
+    return differenzaCosto;
+  }
+
+  return String((a as any).nome ?? "").localeCompare(
+    String((b as any).nome ?? "")
+  );
 }
 
 export function generaFormazioneAutomatica(

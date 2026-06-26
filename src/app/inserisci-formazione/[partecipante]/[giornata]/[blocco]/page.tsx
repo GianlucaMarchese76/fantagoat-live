@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { supabase } from "../../../../../lib/supabase";
 import FormazioneClient from "./FormazioneClient";
 
@@ -37,6 +38,16 @@ const { data: rosa, error: rosaError } = usaVecchiaRosa
       .eq("blocco", bloccoNorm)
       .order("ruolo")
       .order("giocatore");
+      
+if (!rosaError && (!rosa || rosa.length === 0)) {
+  redirect(
+    `/crea-rosa?partecipante=${encodeURIComponent(
+      partecipanteNorm
+    )}&giornata=${encodeURIComponent(
+      giornataNorm
+    )}&blocco=${encodeURIComponent(bloccoNorm)}`
+  );
+}
 
   const { data: calendario } = await supabase
     .from("calendario_partite")

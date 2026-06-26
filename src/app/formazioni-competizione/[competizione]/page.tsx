@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import FormazioneClient from "./FormazioneClient";
 
@@ -56,6 +57,14 @@ export default async function FormazioniPage({
     .eq("competizione_id", competizioneData.id)
     .eq("partecipante_id", partecipanteData.id);
 
+if (!rose || rose.length === 0) {
+  redirect(
+    `/crea-rosa/${competizioneData.codice}?partecipante=${encodeURIComponent(
+      partecipanteData.slug
+    )}`
+  );
+}
+
   const idsGiocatori = rose?.map((r) => r.giocatore_id) ?? [];
 
   const { data: giocatori } = await supabase
@@ -92,8 +101,6 @@ const panchinaIniziale =
   formazioneSalvata
     ?.filter((r) => r.tipo === "panchina")
     .map((r) => r.giocatore_id) ?? [];
-
-console.log("PANCHINA INIZIALE", panchinaIniziale);
 
   const capitanoIniziale =
     formazioneSalvata?.find((r) => r.is_capitano)?.giocatore_id ?? null;

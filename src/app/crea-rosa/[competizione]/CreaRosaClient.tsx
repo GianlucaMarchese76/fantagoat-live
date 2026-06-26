@@ -10,11 +10,13 @@ import ListaGiocatori from "./components/ListaGiocatori";
 import RosaPanel from "./components/RosaPanel";
 import PartiteFase from "./components/PartiteFase";
 import { generaFormazioneAutomatica } from "./lib/generaFormazione";
+import { aggiornaFormazioneEsistente } from "./lib/aggiornaFormazioneEsistente";
 import { useRouter } from "next/navigation";
 
 import type {
   Competizione,
   FiltroRuolo,
+  FormazioneCompetizioneSalvata,
   Giocatore,
   Partecipante,
   Ruolo,
@@ -39,6 +41,7 @@ type Props = {
   partecipante: Partecipante;
   giocatori: Giocatore[];
   rosaIniziale: Giocatore[];
+  formazioneEsistente: FormazioneCompetizioneSalvata[];
   campoQuotazione: string;
   partite: PartitaFase[];
 };
@@ -48,6 +51,7 @@ export default function CreaRosaClient({
   partecipante,
   giocatori,
   rosaIniziale,
+  formazioneEsistente,
   partite,
 }: Props) {
   const router = useRouter();
@@ -212,12 +216,23 @@ export default function CreaRosaClient({
       costo: prezzoGiocatore(g),
     }));
 
+if (righeRosa.length !== LIMITE_GIOCATORI) {
+  throw new Error("Salvataggio bloccato: rosa incompleta.");
+}
+
+if (new Set(righeRosa.map((r) => r.giocatore_id)).size !== LIMITE_GIOCATORI) {
+  throw new Error("Salvataggio bloccato: rosa con giocatori duplicati.");
+}
+
     const rosaConCosto = rosa.map((g) => ({
       ...g,
       costo: prezzoGiocatore(g),
     }));
 
-    const formazione = generaFormazioneAutomatica(rosaConCosto);
+    const formazione =
+  formazioneEsistente.length > 0
+    ? aggiornaFormazioneEsistente(rosaConCosto, formazioneEsistente)
+    : generaFormazioneAutomatica(rosaConCosto);
 
     const { error: deleteRosaError } = await supabase
       .from("rose_competizione")
@@ -263,6 +278,25 @@ export default function CreaRosaClient({
         is_vice: g.id === formazione.vice.id,
       })),
     ];
+
+if (righeFormazione.length !== LIMITE_GIOCATORI) {
+  throw new Error("Salvataggio bloccato: formazione incompleta.");
+}
+
+if (
+  new Set(righeFormazione.map((r) => r.giocatore_id)).size !==
+  LIMITE_GIOCATORI
+) {
+  throw new Error("Salvataggio bloccato: formazione con giocatori duplicati.");
+}
+
+if (!righeFormazione.some((r) => r.is_capitano)) {
+  throw new Error("Salvataggio bloccato: capitano mancante.");
+}
+
+if (!righeFormazione.some((r) => r.is_vice)) {
+  throw new Error("Salvataggio bloccato: vicecapitano mancante.");
+}
 
     const { error: insertFormazioneError } = await supabase
       .from("formazioni_competizione")

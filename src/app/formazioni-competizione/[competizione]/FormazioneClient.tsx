@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabase";
+import {
+  BonusModuloEliminazione,
+  calcolaBonusModulo,
+} from "../../../lib/fantagoat";
 
 type GiocatoreRosa = {
   id: string;
@@ -22,14 +26,14 @@ type Props = {
   moduloIniziale: string;
 };
 
-const MODULI: Record<string, { label: string; bonus: number; ruoli: string[] }> = {
-  M_343: { label: "3-4-3", bonus: -1, ruoli: ["P", "D", "D", "D", "C", "C", "C", "C", "A", "A", "A"] },
-  M_352: { label: "3-5-2", bonus: 2, ruoli: ["P", "D", "D", "D", "C", "C", "C", "C", "C", "A", "A"] },
-  M_433: { label: "4-3-3", bonus: 1, ruoli: ["P", "D", "D", "D", "D", "C", "C", "C", "A", "A", "A"] },
-  M_442: { label: "4-4-2", bonus: 0, ruoli: ["P", "D", "D", "D", "D", "C", "C", "C", "C", "A", "A"] },
-  M_451: { label: "4-5-1", bonus: 1, ruoli: ["P", "D", "D", "D", "D", "C", "C", "C", "C", "C", "A"] },
-  M_532: { label: "5-3-2", bonus: 2, ruoli: ["P", "D", "D", "D", "D", "D", "C", "C", "C", "A", "A"] },
-  M_541: { label: "5-4-1", bonus: 3, ruoli: ["P", "D", "D", "D", "D", "D", "C", "C", "C", "C", "A"] },
+const MODULI: Record<string, { label: string; ruoli: string[] }> = {
+  M_343: { label: "3-4-3", ruoli: ["P", "D", "D", "D", "C", "C", "C", "C", "A", "A", "A"] },
+  M_352: { label: "3-5-2", ruoli: ["P", "D", "D", "D", "C", "C", "C", "C", "C", "A", "A"] },
+  M_433: { label: "4-3-3", ruoli: ["P", "D", "D", "D", "D", "C", "C", "C", "A", "A", "A"] },
+  M_442: { label: "4-4-2", ruoli: ["P", "D", "D", "D", "D", "C", "C", "C", "C", "A", "A"] },
+  M_451: { label: "4-5-1", ruoli: ["P", "D", "D", "D", "D", "C", "C", "C", "C", "C", "A"] },
+  M_532: { label: "5-3-2", ruoli: ["P", "D", "D", "D", "D", "D", "C", "C", "C", "A", "A"] },
+  M_541: { label: "5-4-1", ruoli: ["P", "D", "D", "D", "D", "D", "C", "C", "C", "C", "A"] },
 };
 
 function normalizzaModulo(modulo: string | null | undefined) {
@@ -112,10 +116,15 @@ export default function FormazioneClient({
   }
 
   function opzioniDisponibili(ruolo: string, valoreCorrente: string) {
-    return rosaOrdinata
-      .filter((g) => g.ruolo === ruolo)
-      .filter((g) => g.id === valoreCorrente || !selezionati.includes(g.id));
-  }
+  return rosaOrdinata
+    .filter((g) => g.ruolo === ruolo)
+    .filter(
+      (g) =>
+        g.id === valoreCorrente ||
+        panchina.includes(g.id) ||
+        !selezionati.includes(g.id)
+    );
+}
 
   function opzioniPanchina(valoreCorrente: string) {
     return rosaOrdinata.filter(
@@ -124,13 +133,25 @@ export default function FormazioneClient({
   }
 
   function cambiaTitolare(index: number, nuovoId: string) {
-    const copia = [...titolari];
-    copia[index] = nuovoId;
-    setTitolari(copia);
+  const nuoviTitolari = [...titolari];
+  const nuovaPanchina = [...panchina];
 
-    if (capitano && !copia.includes(capitano)) setCapitano("");
-    if (vice && !copia.includes(vice)) setVice("");
+  if (nuovoId) {
+    const indexPanchina = nuovaPanchina.findIndex((id) => id === nuovoId);
+
+    if (indexPanchina !== -1) {
+      nuovaPanchina[indexPanchina] = "";
+    }
   }
+
+  nuoviTitolari[index] = nuovoId;
+
+  setTitolari(nuoviTitolari);
+  setPanchina(nuovaPanchina);
+
+  if (capitano && !nuoviTitolari.includes(capitano)) setCapitano("");
+  if (vice && !nuoviTitolari.includes(vice)) setVice("");
+}
 
   function cambiaPanchinaro(index: number, nuovoId: string) {
     const copia = [...panchina];
@@ -148,10 +169,30 @@ export default function FormazioneClient({
   }
 
   async function handleSalvaFormazione() {
-    if (!formazioneCompleta) {
-      setMessaggio("Formazione non valida: servono 11 titolari, 5 panchinari, capitano e vice senza duplicati.");
-      return;
-    }
+    if (titolari.filter(Boolean).length !== 11) {
+  setMessaggio("Formazione non valida: devi selezionare 11 titolari.");
+  return;
+}
+
+if (panchina.filter(Boolean).length !== 5) {
+  setMessaggio("Formazione non valida: devi selezionare 5 panchinari.");
+  return;
+}
+
+if (!capitano) {
+  setMessaggio("Formazione non valida: devi selezionare il capitano.");
+  return;
+}
+
+if (!vice) {
+  setMessaggio("Formazione non valida: devi selezionare il vicecapitano.");
+  return;
+}
+
+if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
+  setMessaggio("Formazione non valida: ci sono giocatori duplicati.");
+  return;
+}
 
     try {
       setSalvataggio(true);
@@ -166,7 +207,10 @@ export default function FormazioneClient({
         is_capitano: capitano === id,
         is_vice: vice === id,
         modulo: MODULI[modulo].label,
-        bonus_malus_modulo: MODULI[modulo].bonus,
+        bonus_malus_modulo: calcolaBonusModulo(
+  MODULI[modulo].label,
+  BonusModuloEliminazione
+),
       }));
 
       const righePanchina = panchina.map((id, index) => ({
@@ -178,7 +222,10 @@ export default function FormazioneClient({
         is_capitano: false,
         is_vice: false,
         modulo: MODULI[modulo].label,
-        bonus_malus_modulo: MODULI[modulo].bonus,
+        bonus_malus_modulo: calcolaBonusModulo(
+  MODULI[modulo].label,
+  BonusModuloEliminazione
+),
       }));
 
       const { error: deleteError } = await supabase
@@ -195,7 +242,7 @@ export default function FormazioneClient({
 
       if (insertError) throw insertError;
 
-      setMessaggio("Formazione salvata con successo.");
+      setMessaggio("Formazione salvata.");
     } catch (error) {
       console.error(error);
       setMessaggio("Errore durante il salvataggio della formazione.");
@@ -227,8 +274,8 @@ export default function FormazioneClient({
         <p className="mt-2 text-sm text-slate-400">
           Bonus/malus modulo:{" "}
           <span className="font-bold">
-            {MODULI[modulo].bonus > 0 ? "+" : ""}
-            {MODULI[modulo].bonus}
+            {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione) > 0 ? "+" : ""}
+{calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione)}
           </span>
         </p>
       </section>
@@ -248,7 +295,9 @@ export default function FormazioneClient({
                 onChange={(e) => cambiaTitolare(index, e.target.value)}
                 className="w-full rounded-xl bg-slate-800 p-2.5 text-sm"
               >
-                <option value="">✕ Svuota questo slot</option>
+                <option value="">
+  {titolari[index] ? "✕ Svuota questo slot" : "Seleziona giocatore"}
+</option>
 
                 {opzioniDisponibili(ruolo, titolari[index]).map((g) => (
                   <option key={g.id} value={g.id}>
@@ -393,10 +442,15 @@ export default function FormazioneClient({
         </button>
 
         {messaggio && (
-          <div className="rounded-xl bg-slate-900 p-3 text-sm font-bold">
-            {messaggio}
-          </div>
-        )}
+  <div className="rounded-xl bg-slate-900 p-3 text-sm font-bold">
+    {messaggio}{" "}
+    {messaggio === "Formazione salvata." && (
+      <a href="/" className="text-emerald-300 underline">
+        Torna alla home
+      </a>
+    )}
+  </div>
+)}
       </div>
     </main>
   );

@@ -70,12 +70,16 @@ export default function RosaPanel({
         ) : (
           <>
             <button
-              onClick={handleConfermaRosa}
-              disabled={salvataggio}
-              className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
-            >
-              {salvataggio ? "Salvataggio..." : "Conferma Rosa"}
-            </button>
+  onClick={handleConfermaRosa}
+  disabled={salvataggio || rosa.length !== 16}
+  className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:opacity-60"
+>
+  {salvataggio
+    ? "Salvataggio..."
+    : rosa.length !== 16
+      ? `Completa la rosa (${rosa.length}/16)`
+      : "Conferma Rosa"}
+</button>
 
             {messaggio && (
               <div className="rounded-lg bg-[#07101f] p-2 text-xs font-bold text-slate-200">
