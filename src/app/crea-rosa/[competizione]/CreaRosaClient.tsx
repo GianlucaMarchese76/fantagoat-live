@@ -235,6 +235,9 @@ export default function CreaRosaClient({
   return (
     <div className="min-h-screen bg-[#08111d] text-white">
       <div className="mx-auto max-w-7xl px-3 py-4">
+        <a href="/" className="mb-3 inline-block text-sm text-slate-300">
+  ← Home
+</a>
         <RosaHeader competizione={competizione} partecipante={partecipante} />
 
         <BudgetBar

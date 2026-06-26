@@ -104,6 +104,22 @@ console.log("PANCHINA INIZIALE", panchinaIniziale);
   const moduloIniziale = formazioneSalvata?.[0]?.modulo ?? "4-4-2";
 
   return (
+  <main className="min-h-screen bg-slate-950 p-4 text-white">
+    <div className="mb-4 flex gap-4">
+      <a href="/" className="text-sm text-slate-300">
+        ← Home
+      </a>
+
+      <a
+        href={`/crea-rosa/${competizioneData.codice}?partecipante=${encodeURIComponent(
+          partecipanteData.slug
+        )}`}
+        className="text-sm text-slate-300"
+      >
+        ← Torna alla rosa
+      </a>
+    </div>
+
     <FormazioneClient
       competizione={competizioneData}
       partecipante={partecipanteData}
@@ -114,5 +130,6 @@ console.log("PANCHINA INIZIALE", panchinaIniziale);
       viceIniziale={viceIniziale}
       moduloIniziale={moduloIniziale}
     />
-  );
+  </main>
+);
 }

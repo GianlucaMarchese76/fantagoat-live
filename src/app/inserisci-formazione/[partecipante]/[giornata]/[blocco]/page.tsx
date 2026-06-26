@@ -20,12 +20,12 @@ export default async function InserisciFormazionePage({
   const bloccoNorm = decodeURIComponent(blocco).toUpperCase();
 
   const { data: rosa, error: rosaError } = await supabase
-    .from("v_rose")
-    .select("*")
-    .eq("partecipante", partecipanteNorm)
-    .eq("blocco", bloccoNorm)
-    .order("ruolo")
-    .order("giocatore");
+  .from("v_rose_competizione")
+  .select("*")
+  .eq("partecipante", partecipanteNorm)
+  .eq("blocco", bloccoNorm)
+  .order("ruolo")
+  .order("giocatore");
 
   const { data: calendario } = await supabase
     .from("calendario_partite")

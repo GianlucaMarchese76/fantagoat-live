@@ -12,10 +12,44 @@ function labelCompetizione(giornata: string, blocco: string) {
   if (giornata === "semifinale") return "Semifinali";
   if (giornata === "terzo_posto") return "Finale 3° posto";
   if (giornata === "finale") return "Finale";
-
   if (giornata.startsWith("G")) return `${giornata}${blocco}`;
 
   return `${giornata} ${blocco}`.trim();
+}
+
+function codiceCompetizione(giornata: string, blocco: string) {
+  if (giornata === "sedicesimi" && blocco === "1-8") return "16ALTA";
+  if (giornata === "sedicesimi" && blocco === "9-16") return "16BASSA";
+  if (giornata === "ottavi" && blocco === "1-4") return "8ALTA";
+  if (giornata === "ottavi" && blocco === "5-8") return "8BASSA";
+  if (giornata === "quarti") return "QUARTI";
+  if (giornata === "semifinale") return "SEMIFINALI";
+  if (giornata === "terzo_posto") return "TERZOPOSTO";
+  if (giornata === "finale") return "FINALE";
+
+  return null;
+}
+
+function hrefFormazione({
+  partecipante,
+  giornata,
+  blocco,
+}: {
+  partecipante: string;
+  giornata: string;
+  blocco: string;
+}) {
+  const codice = codiceCompetizione(giornata, blocco);
+
+  if (codice) {
+    return `/formazioni-competizione/${codice}?partecipante=${encodeURIComponent(
+      partecipante
+    )}`;
+  }
+
+  return `/inserisci-formazione/${encodeURIComponent(
+    partecipante
+  )}/${giornata}/${blocco}`;
 }
 
 export default async function InserisciFormazioneIndex() {
@@ -29,12 +63,15 @@ export default async function InserisciFormazioneIndex() {
     .select("giornata, blocco, kickoff")
     .order("kickoff");
 
-  const aperteMap = new Map<string, {
-    giornata: string;
-    blocco: string;
-    primaPartita: Date;
-    chiusura: Date;
-  }>();
+  const aperteMap = new Map<
+    string,
+    {
+      giornata: string;
+      blocco: string;
+      primaPartita: Date;
+      chiusura: Date;
+    }
+  >();
 
   for (const p of partite ?? []) {
     const key = `${p.giornata}-${p.blocco}`;
@@ -55,21 +92,21 @@ export default async function InserisciFormazioneIndex() {
     .sort((a, b) => a.primaPartita.getTime() - b.primaPartita.getTime());
 
   return (
-    <main className="min-h-screen p-4 bg-slate-100">
-      <a href="/" className="text-blue-600 text-sm">
+    <main className="min-h-screen bg-slate-100 p-4">
+      <a href="/" className="text-sm text-blue-600">
         ← Home
       </a>
 
-      <h1 className="text-3xl font-black mt-5 mb-2 leading-tight">
-  📝 Inserisci formazione
-</h1>
+      <h1 className="mt-5 mb-2 text-3xl font-black leading-tight">
+        📝 Inserisci formazione
+      </h1>
 
-      <p className="text-slate-600 mb-6">
+      <p className="mb-6 text-slate-600">
         Seleziona partecipante e competizione ancora aperta.
       </p>
 
       {competizioniAperte.length === 0 && (
-        <section className="bg-white rounded-2xl shadow p-4">
+        <section className="rounded-2xl bg-white p-4 shadow">
           <div className="text-slate-600">
             Nessuna formazione inseribile al momento.
           </div>
@@ -80,28 +117,30 @@ export default async function InserisciFormazioneIndex() {
         {competizioniAperte.map((c) => (
           <section
             key={`${c.giornata}-${c.blocco}`}
-            className="bg-white rounded-2xl shadow p-4"
+            className="rounded-2xl bg-white p-4 shadow"
           >
             <h2 className="text-2xl font-bold">
-             {labelCompetizione(c.giornata, c.blocco)}
+              {labelCompetizione(c.giornata, c.blocco)}
             </h2>
 
-            <p className="text-sm text-slate-500 mb-3">
+            <p className="mb-3 text-sm text-slate-500">
               Chiusura inserimento:{" "}
               {c.chiusura.toLocaleString("it-IT", {
-  dateStyle: "short",
-  timeStyle: "short",
-  timeZone: "Europe/Rome",
-})}
+                dateStyle: "short",
+                timeStyle: "short",
+                timeZone: "Europe/Rome",
+              })}
             </p>
 
             <div className="grid gap-2">
               {(partecipanti ?? []).map((p) => (
                 <a
                   key={`${p.nome}-${c.giornata}-${c.blocco}`}
-                  href={`/inserisci-formazione/${encodeURIComponent(
-                    p.nome
-                  )}/${c.giornata}/${c.blocco}`}
+                  href={hrefFormazione({
+                    partecipante: p.nome,
+                    giornata: c.giornata,
+                    blocco: c.blocco,
+                  })}
                   className="rounded-xl bg-slate-50 px-4 py-3 font-semibold"
                 >
                   {p.nome}
