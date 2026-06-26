@@ -19,13 +19,24 @@ export default async function InserisciFormazionePage({
   const giornataNorm = decodeURIComponent(giornata).toUpperCase();
   const bloccoNorm = decodeURIComponent(blocco).toUpperCase();
 
-  const { data: rosa, error: rosaError } = await supabase
-  .from("v_rose_competizione")
-  .select("*")
-  .eq("partecipante", partecipanteNorm)
-  .eq("blocco", bloccoNorm)
-  .order("ruolo")
-  .order("giocatore");
+ const usaVecchiaRosa = giornataNorm.startsWith("G");
+
+const { data: rosa, error: rosaError } = usaVecchiaRosa
+  ? await supabase
+      .from("v_rose")
+      .select("*")
+      .eq("partecipante", partecipanteNorm)
+      .eq("blocco", bloccoNorm)
+      .order("ruolo")
+      .order("giocatore")
+  : await supabase
+      .from("v_rose_competizione")
+      .select("*")
+      .eq("partecipante", partecipanteNorm)
+      .eq("giornata", giornataNorm.toLowerCase())
+      .eq("blocco", bloccoNorm)
+      .order("ruolo")
+      .order("giocatore");
 
   const { data: calendario } = await supabase
     .from("calendario_partite")
