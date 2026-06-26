@@ -1,4 +1,5 @@
 export * from "./calcoloFormazione";
+export * from "./regoleModulo";
 
 export * from "./calcolaClassifica";
 export * from "./calcolaGenerale";

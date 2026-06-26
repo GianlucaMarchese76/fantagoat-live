@@ -1,3 +1,8 @@
+import {
+  BonusModuloGironi,
+  calcolaBonusModulo,
+} from "./regoleModulo";
+
 const moduliValidi = [
   "3-4-3",
   "3-5-2",
@@ -229,20 +234,6 @@ export function calcolaModCentrocampo(effettivi: any[]) {
   return 0;
 }
 
-export function calcolaBonusModulo(moduloFinale: string) {
-  const bonus: Record<string, number> = {
-    "3-4-3": -1,
-    "3-5-2": 2,
-    "4-3-3": -1,
-    "4-4-2": 0,
-    "4-5-1": 2,
-    "5-3-2": 2,
-    "5-4-1": 2,
-  };
-
-  return bonus[moduloFinale] ?? 0;
-}
-
 export function calcolaTotaleFormazione(rows: any[]) {
   const titolari = rows.filter((g) => g.tipo === "Titolare");
   const panchina = rows.filter((g) => g.tipo === "Panchina");
@@ -254,6 +245,9 @@ export function calcolaTotaleFormazione(rows: any[]) {
     calcolaVotoCapitano(risultato.effettivi) +
     calcolaModDifesa(risultato.effettivi) +
     calcolaModCentrocampo(risultato.effettivi) +
-    calcolaBonusModulo(risultato.moduloFinale)
+    calcolaBonusModulo(
+      risultato.moduloFinale,
+      BonusModuloGironi
+    )
   );
 }
