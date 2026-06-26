@@ -30,16 +30,8 @@ export default function ListaGiocatori({
 }) {
   return (
     <section className="rounded-2xl border border-slate-700/70 bg-[#101a2d] p-3">
-      <h2 className="mb-3 text-xl font-black text-white">
-        Lista giocatori
-        {ruoloFiltro !== "Tutti" && (
-          <span className="ml-2 text-sm font-bold text-amber-300">
-            · filtro {ruoloFiltro}
-          </span>
-        )}
-      </h2>
 
-      <div className="mb-3 grid gap-2 md:grid-cols-[1fr_180px]">
+      <div className="mb-2 grid gap-2 md:grid-cols-[1fr_180px]">
         <input
           value={ricerca}
           onChange={(e) => setRicerca(e.target.value)}

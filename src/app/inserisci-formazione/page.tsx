@@ -102,7 +102,7 @@ export default async function InserisciFormazioneIndex() {
       </h1>
 
       <p className="mb-6 text-slate-600">
-        Seleziona partecipante e competizione ancora aperta.
+        Seleziona partecipante e competizione.
       </p>
 
       {competizioniAperte.length === 0 && (

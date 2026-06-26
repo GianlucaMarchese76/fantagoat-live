@@ -4,29 +4,6 @@ import CreaRosaClient from "./CreaRosaClient";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function datiCalendarioDaCodice(codice: string) {
-  switch (codice) {
-    case "16ALTA":
-      return { giornata: "sedicesimi", blocco: "1-8" };
-    case "16BASSA":
-      return { giornata: "sedicesimi", blocco: "9-16" };
-    case "8ALTA":
-      return { giornata: "ottavi", blocco: "1-4" };
-    case "8BASSA":
-      return { giornata: "ottavi", blocco: "5-8" };
-    case "QUARTI":
-      return { giornata: "quarti", blocco: "unico" };
-    case "SEMIFINALI":
-      return { giornata: "semifinale", blocco: "unico" };
-    case "TERZOPOSTO":
-      return { giornata: "terzo_posto", blocco: "unico" };
-    case "FINALE":
-      return { giornata: "finale", blocco: "unico" };
-    default:
-      return null;
-  }
-}
-
 export default async function CreaRosaCompetizionePage({
   params,
   searchParams,
@@ -86,36 +63,48 @@ export default async function CreaRosaCompetizionePage({
             ? "quotazione_semifinali"
             : "quotazione_finale";
 
-  const calendario = datiCalendarioDaCodice(competizioneData.codice);
+  const { data: competizionePartite } = await supabase
+    .from("competizioni_partite")
+    .select("partita, ordine")
+    .eq("competizione_id", competizioneData.id)
+    .order("ordine", { ascending: true });
 
-  const { data: partiteRaw } = calendario
-    ? await supabase
-        .from("calendario_partite")
-        .select(
-          "partita, kickoff, nazionale, avversaria, nome_nazionale, nome_avversaria"
-        )
-        .eq("giornata", calendario.giornata)
-        .eq("blocco", calendario.blocco)
-        .order("kickoff")
-    : { data: [] };
+  const partiteIds = (competizionePartite ?? []).map((p) => p.partita);
+
+  const { data: partiteRaw } =
+    partiteIds.length > 0
+      ? await supabase
+          .from("calendario_partite")
+          .select(
+            "partita, kickoff, nazionale, avversaria, nome_nazionale, nome_avversaria"
+          )
+          .in("partita", partiteIds)
+      : { data: [] };
+
+  const ordinePartite = new Map(
+    (competizionePartite ?? []).map((p) => [p.partita, p.ordine ?? 999])
+  );
 
   const partiteFase = Array.from(
-    new Map(
-      (partiteRaw ?? []).map((p) => {
-        const casa = String(p.nazionale ?? "");
-        const trasferta = String(p.avversaria ?? "");
-        const chiave = [casa, trasferta].sort().join("-");
+  new Map(
+    (partiteRaw ?? []).map((p) => {
+      const casa = String(p.nazionale ?? "");
+      const trasferta = String(p.avversaria ?? "");
+      const numeroPartita = String(p.partita ?? "");
 
-        return [
-          chiave,
-          {
-            partita: `${casa} - ${trasferta}`,
-            kickoff: p.kickoff,
-          },
-        ];
-      })
-    ).values()
-  ).slice(0, 8);
+      return [
+        numeroPartita,
+        {
+          partita: `${casa} - ${trasferta}`,
+          kickoff: p.kickoff,
+          ordine: ordinePartite.get(numeroPartita) ?? 999,
+        },
+      ];
+    })
+  ).values()
+)
+  .sort((a, b) => a.ordine - b.ordine)
+  .slice(0, 8);
 
   const nazionaliAmmesse = Array.from(
     new Set(

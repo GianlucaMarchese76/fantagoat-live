@@ -3,71 +3,160 @@ import { supabase } from "../../lib/supabase";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type FormazioneRow = {
+type PartecipanteRow = {
+  id: string;
+  nome: string;
+  slug: string;
+};
+
+type FormazioneOldRow = {
   giornata: string;
   blocco: string;
   partecipante_id: string;
 };
 
-type PartecipanteRow = {
-  id: string;
-  nome: string;
+type FormazioneCompetizioneRow = {
+  competizione_id: string;
+  partecipante_id: string;
 };
 
+type CompetizioneRow = {
+  id: string;
+  codice: string;
+  nome: string;
+  giornata: string;
+  blocco: string;
+  ordine: number;
+};
+
+type FormazioneItem = {
+  label: string;
+  href: string;
+  ordinamento: number;
+};
+
+function labelFormazioneCompetizione(codice: string) {
+  switch (codice) {
+    case "16ALTA":
+      return "1/16 gare 1-8";
+    case "16BASSA":
+      return "1/16 gare 9-16";
+    case "8ALTA":
+      return "1/8 gare 1-4";
+    case "8BASSA":
+      return "1/8 gare 5-8";
+    case "QUARTI":
+      return "Quarti";
+    case "SEMIFINALI":
+      return "Semifinale";
+    case "TERZOPOSTO":
+      return "3°-4° posto";
+    case "FINALE":
+      return "Finale";
+    default:
+      return codice;
+  }
+}
+
 export default async function FormazioniPage() {
-  const { data: righe, error } = await supabase
+  const { data: righeOld, error: errorOld } = await supabase
     .from("formazioni")
     .select("giornata, blocco, partecipante_id");
 
+  const { data: righeCompetizione, error: errorCompetizione } =
+    await supabase
+      .from("formazioni_competizione")
+      .select("competizione_id, partecipante_id");
+
   const { data: partecipanti } = await supabase
     .from("partecipanti")
-    .select("id, nome");
+    .select("id,nome,slug");
+
+  const { data: competizioni } = await supabase
+    .from("competizioni")
+    .select("id,codice,nome,giornata,blocco,ordine");
 
   const partecipantiMap = new Map(
-    ((partecipanti ?? []) as PartecipanteRow[]).map((p) => [p.id, p.nome])
+    ((partecipanti ?? []) as PartecipanteRow[]).map((p) => [p.id, p])
   );
 
-  const gruppi = new Map<string, { giornata: string; blocco: string }[]>();
+  const competizioniMap = new Map(
+    ((competizioni ?? []) as CompetizioneRow[]).map((c) => [c.id, c])
+  );
 
-  for (const r of (righe ?? []) as FormazioneRow[]) {
+  const gruppi = new Map<string, FormazioneItem[]>();
+
+  for (const r of (righeOld ?? []) as FormazioneOldRow[]) {
     const partecipante = partecipantiMap.get(r.partecipante_id);
     if (!partecipante) continue;
 
-    const key = `${r.giornata}-${r.blocco}`;
-    const lista = gruppi.get(partecipante) ?? [];
+    const lista = gruppi.get(partecipante.nome) ?? [];
 
-    if (!lista.some((x) => `${x.giornata}-${x.blocco}` === key)) {
+    if (
+      !lista.some(
+        (x) => x.href ===
+          `/formazioni/${encodeURIComponent(
+            partecipante.nome
+          )}/${r.giornata}/${r.blocco}`
+      )
+    ) {
       lista.push({
-        giornata: r.giornata,
-        blocco: r.blocco,
+        label: `${r.giornata}${r.blocco}`,
+        href: `/formazioni/${encodeURIComponent(
+          partecipante.nome
+        )}/${r.giornata}/${r.blocco}`,
+        ordinamento: 0,
       });
     }
 
-    gruppi.set(partecipante, lista);
+    gruppi.set(partecipante.nome, lista);
   }
 
-  const partecipantiConFormazioni = Array.from(gruppi.entries()).sort(([a], [b]) =>
-    a.localeCompare(b)
+  for (const r of (righeCompetizione ?? []) as FormazioneCompetizioneRow[]) {
+    const partecipante = partecipantiMap.get(r.partecipante_id);
+    const competizione = competizioniMap.get(r.competizione_id);
+
+    if (!partecipante || !competizione) continue;
+
+    const lista = gruppi.get(partecipante.nome) ?? [];
+
+    const href = `/formazioni-competizione/${competizione.codice}?partecipante=${encodeURIComponent(
+      partecipante.slug
+    )}`;
+
+    if (!lista.some((x) => x.href === href)) {
+      lista.push({
+        label: labelFormazioneCompetizione(competizione.codice),
+        href,
+        ordinamento: competizione.ordine,
+      });
+    }
+
+    gruppi.set(partecipante.nome, lista);
+  }
+
+  const partecipantiConFormazioni = Array.from(gruppi.entries()).sort(
+    ([a], [b]) => a.localeCompare(b)
   );
 
   return (
-    <main className="min-h-screen p-4 bg-slate-100">
-      <a href="/" className="text-blue-600 text-sm">
+    <main className="min-h-screen bg-slate-100 p-4">
+      <a href="/" className="text-sm text-blue-600">
         ← Home
       </a>
 
-      <h1 className="text-4xl font-bold mt-5 mb-6">
+      <h1 className="mt-5 mb-6 text-4xl font-bold">
         Formazioni
       </h1>
 
-      {error && (
+      {(errorOld || errorCompetizione) && (
         <pre className="text-red-600">
-          {JSON.stringify(error, null, 2)}
+          {JSON.stringify(errorOld ?? errorCompetizione, null, 2)}
         </pre>
       )}
 
       {partecipantiConFormazioni.length === 0 && (
-        <section className="bg-white rounded-2xl shadow p-4">
+        <section className="rounded-2xl bg-white p-4 shadow">
           <div className="text-slate-600">
             Nessuna formazione salvata.
           </div>
@@ -75,39 +164,30 @@ export default async function FormazioniPage() {
       )}
 
       <div className="grid gap-4">
-        {partecipantiConFormazioni.map(([partecipante, lista]) => {
-          const ordinate = [...lista].sort((a, b) => {
-            const g = a.giornata.localeCompare(b.giornata);
-            if (g !== 0) return g;
-            return a.blocco.localeCompare(b.blocco);
-          });
+        {partecipantiConFormazioni.map(([partecipante, lista]) => (
+          <section
+            key={partecipante}
+            className="rounded-2xl bg-white p-4 shadow"
+          >
+            <h2 className="mb-3 text-2xl font-bold">
+              {partecipante}
+            </h2>
 
-          return (
-            <section
-              key={partecipante}
-              className="bg-white rounded-2xl shadow p-4"
-            >
-              <h2 className="text-2xl font-bold mb-3">
-                {partecipante}
-              </h2>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {ordinate.map((f) => (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {[...lista]
+                .sort((a, b) => a.ordinamento - b.ordinamento)
+                .map((f) => (
                   <a
-                    key={`${partecipante}-${f.giornata}-${f.blocco}`}
-                    href={`/formazioni/${encodeURIComponent(
-                      partecipante
-                    )}/${f.giornata}/${f.blocco}`}
-                    className="bg-slate-100 rounded-xl px-4 py-3 text-center font-bold"
+                    key={f.href}
+                    href={f.href}
+                    className="rounded-xl bg-slate-100 px-4 py-3 text-center font-bold"
                   >
-                    {f.giornata}
-                    {f.blocco}
+                    {f.label}
                   </a>
                 ))}
-              </div>
-            </section>
-          );
-        })}
+            </div>
+          </section>
+        ))}
       </div>
     </main>
   );

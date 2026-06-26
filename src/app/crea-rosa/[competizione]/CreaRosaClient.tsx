@@ -9,6 +9,8 @@ import RuoliBar from "./components/RuoliBar";
 import ListaGiocatori from "./components/ListaGiocatori";
 import RosaPanel from "./components/RosaPanel";
 import PartiteFase from "./components/PartiteFase";
+import { generaFormazioneAutomatica } from "./lib/generaFormazione";
+import { useRouter } from "next/navigation";
 
 import type {
   Competizione,
@@ -48,6 +50,7 @@ export default function CreaRosaClient({
   rosaIniziale,
   partite,
 }: Props) {
+  const router = useRouter();
   const BUDGET_MAX = competizione.budget;
   const MAX_PER_NAZIONALE = competizione.max_per_nazionale;
   const competizioneChiusa = !competizione.attiva || competizione.conclusa;
@@ -178,59 +181,107 @@ export default function CreaRosaClient({
   }
 
   async function handleConfermaRosa() {
-    if (rosa.length !== LIMITE_GIOCATORI) {
-      setMessaggio("La rosa deve contenere esattamente 16 giocatori.");
-      return;
-    }
+  if (rosa.length !== LIMITE_GIOCATORI) {
+    setMessaggio("La rosa deve contenere esattamente 16 giocatori.");
+    return;
+  }
 
-    if (
-      contatoriRuoli.P < MIN_RUOLO.P ||
-      contatoriRuoli.D < MIN_RUOLO.D ||
-      contatoriRuoli.C < MIN_RUOLO.C ||
-      contatoriRuoli.A < MIN_RUOLO.A
-    ) {
-      setMessaggio("Rosa non valida: servono 2 P, 5 D, 5 C, 3 A e 1 Jolly.");
-      return;
-    }
+  if (
+    contatoriRuoli.P < MIN_RUOLO.P ||
+    contatoriRuoli.D < MIN_RUOLO.D ||
+    contatoriRuoli.C < MIN_RUOLO.C ||
+    contatoriRuoli.A < MIN_RUOLO.A
+  ) {
+    setMessaggio("Rosa non valida: servono 2 P, 5 D, 5 C, 3 A e 1 Jolly.");
+    return;
+  }
 
-    if (jollyUsati(contatoriRuoli) !== 1) {
-      setMessaggio("Rosa non valida: devi usare esattamente 1 jolly D/C/A.");
-      return;
-    }
+  if (jollyUsati(contatoriRuoli) !== 1) {
+    setMessaggio("Rosa non valida: devi usare esattamente 1 jolly D/C/A.");
+    return;
+  }
 
-    try {
-      setSalvataggio(true);
-      setMessaggio("");
+  try {
+    setSalvataggio(true);
+    setMessaggio("");
 
-      const righe = rosa.map((g) => ({
+    const righeRosa = rosa.map((g) => ({
+      competizione_id: competizione.id,
+      partecipante_id: partecipante.id,
+      giocatore_id: g.id,
+      costo: prezzoGiocatore(g),
+    }));
+
+    const rosaConCosto = rosa.map((g) => ({
+      ...g,
+      costo: prezzoGiocatore(g),
+    }));
+
+    const formazione = generaFormazioneAutomatica(rosaConCosto);
+
+    const { error: deleteRosaError } = await supabase
+      .from("rose_competizione")
+      .delete()
+      .eq("competizione_id", competizione.id)
+      .eq("partecipante_id", partecipante.id);
+
+    if (deleteRosaError) throw deleteRosaError;
+
+    const { error: insertRosaError } = await supabase
+      .from("rose_competizione")
+      .insert(righeRosa);
+
+    if (insertRosaError) throw insertRosaError;
+
+    const { error: deleteFormazioneError } = await supabase
+      .from("formazioni_competizione")
+      .delete()
+      .eq("competizione_id", competizione.id)
+      .eq("partecipante_id", partecipante.id);
+
+    if (deleteFormazioneError) throw deleteFormazioneError;
+
+    const righeFormazione = [
+      ...formazione.titolari.map((g, index) => ({
         competizione_id: competizione.id,
         partecipante_id: partecipante.id,
         giocatore_id: g.id,
-        costo: prezzoGiocatore(g),
-      }));
+        tipo: "titolare",
+        ordine: index + 1,
+        modulo: formazione.modulo,
+        is_capitano: g.id === formazione.capitano.id,
+        is_vice: g.id === formazione.vice.id,
+      })),
+      ...formazione.panchina.map((g, index) => ({
+        competizione_id: competizione.id,
+        partecipante_id: partecipante.id,
+        giocatore_id: g.id,
+        tipo: "panchina",
+        ordine: index + 1,
+        modulo: formazione.modulo,
+        is_capitano: g.id === formazione.capitano.id,
+        is_vice: g.id === formazione.vice.id,
+      })),
+    ];
 
-      const { error: deleteError } = await supabase
-        .from("rose_competizione")
-        .delete()
-        .eq("competizione_id", competizione.id)
-        .eq("partecipante_id", partecipante.id);
+    const { error: insertFormazioneError } = await supabase
+      .from("formazioni_competizione")
+      .insert(righeFormazione);
 
-      if (deleteError) throw deleteError;
+    if (insertFormazioneError) throw insertFormazioneError;
 
-      const { error: insertError } = await supabase
-        .from("rose_competizione")
-        .insert(righe);
-
-      if (insertError) throw insertError;
-
-      setMessaggio("Rosa salvata con successo.");
-    } catch (error) {
-      console.error(error);
-      setMessaggio("Errore durante il salvataggio.");
-    } finally {
-      setSalvataggio(false);
-    }
+    router.push(
+  `/formazioni-competizione/${competizione.codice}?partecipante=${encodeURIComponent(
+    partecipante.slug
+  )}`
+);
+  } catch (error) {
+    console.error(error);
+    setMessaggio("Errore durante il salvataggio.");
+  } finally {
+    setSalvataggio(false);
   }
+}
 
   return (
     <div className="min-h-screen bg-[#08111d] text-white">
@@ -239,6 +290,17 @@ export default function CreaRosaClient({
   ← Home
 </a>
         <RosaHeader competizione={competizione} partecipante={partecipante} />
+
+<main className="grid gap-3">
+          <RosaPanel
+            rosa={rosa}
+            competizioneChiusa={competizioneChiusa}
+            salvataggio={salvataggio}
+            messaggio={messaggio}
+            svuotaRosa={svuotaRosa}
+            rimuoviGiocatore={rimuoviGiocatore}
+            handleConfermaRosa={handleConfermaRosa}
+          />
 
         <BudgetBar
           budgetUsato={budgetUsato}
@@ -252,17 +314,6 @@ export default function CreaRosaClient({
           ruoloFiltro={ruoloFiltro}
           setRuoloFiltro={setRuoloFiltro}
         />
-
-        <main className="grid gap-3">
-          <RosaPanel
-            rosa={rosa}
-            competizioneChiusa={competizioneChiusa}
-            salvataggio={salvataggio}
-            messaggio={messaggio}
-            svuotaRosa={svuotaRosa}
-            rimuoviGiocatore={rimuoviGiocatore}
-            handleConfermaRosa={handleConfermaRosa}
-          />
 
           <ListaGiocatori
             ricerca={ricerca}
