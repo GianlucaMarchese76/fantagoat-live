@@ -8,6 +8,7 @@ import BudgetBar from "./components/BudgetBar";
 import RuoliBar from "./components/RuoliBar";
 import ListaGiocatori from "./components/ListaGiocatori";
 import RosaPanel from "./components/RosaPanel";
+import PartiteFase from "./components/PartiteFase";
 
 import type {
   Competizione,
@@ -26,12 +27,18 @@ import {
   cognomeGiocatore,
 } from "./lib/regoleRosa";
 
+type PartitaFase = {
+  partita: string;
+  kickoff: string;
+};
+
 type Props = {
   competizione: Competizione;
   partecipante: Partecipante;
   giocatori: Giocatore[];
   rosaIniziale: Giocatore[];
   campoQuotazione: string;
+  partite: PartitaFase[];
 };
 
 export default function CreaRosaClient({
@@ -39,13 +46,14 @@ export default function CreaRosaClient({
   partecipante,
   giocatori,
   rosaIniziale,
+  partite,
 }: Props) {
   const BUDGET_MAX = competizione.budget;
   const MAX_PER_NAZIONALE = competizione.max_per_nazionale;
   const competizioneChiusa = !competizione.attiva || competizione.conclusa;
 
   const [ricerca, setRicerca] = useState("");
-  const [ruoloFiltro, setRuoloFiltro] = useState<FiltroRuolo>("Tutti");
+  const [ruoloFiltro, setRuoloFiltro] = useState<FiltroRuolo>("P");
   const [ordinamento, setOrdinamento] =
     useState<"nome" | "prezzoAsc" | "prezzoDesc">("prezzoDesc");
   const [rosa, setRosa] = useState<Giocatore[]>(rosaIniziale ?? []);
@@ -58,7 +66,6 @@ export default function CreaRosaClient({
   );
 
   const budgetResiduo = BUDGET_MAX - budgetUsato;
-
   const contatoriRuoli = useMemo(() => contaRuoli(rosa), [rosa]);
 
   const contatoriNazionali = useMemo(() => {
@@ -82,16 +89,23 @@ export default function CreaRosaClient({
           g.nome.toLowerCase().includes(testo) ||
           g.nazionale.toLowerCase().includes(testo);
 
-        const matchRuolo =
-          ruoloFiltro === "Tutti" ||
-          g.ruolo === ruoloFiltro ||
-          (ruoloFiltro === "J" && ["D", "C", "A"].includes(g.ruolo));
+        let matchRuolo = false;
+
+        if (ruoloFiltro === "Tutti") {
+          matchRuolo = ["P", "D", "C", "A"].includes(g.ruolo);
+        } else if (ruoloFiltro === "J") {
+          matchRuolo = ["D", "C", "A"].includes(g.ruolo);
+        } else {
+          matchRuolo = g.ruolo === ruoloFiltro;
+        }
 
         return matchRicerca && matchRuolo;
       })
       .sort((a, b) => {
         if (ordinamento === "nome") {
-          return cognomeGiocatore(a.nome).localeCompare(cognomeGiocatore(b.nome));
+          return cognomeGiocatore(a.nome).localeCompare(
+            cognomeGiocatore(b.nome)
+          );
         }
 
         const qa = prezzoGiocatore(a);
@@ -260,6 +274,9 @@ export default function CreaRosaClient({
             aggiungiGiocatore={aggiungiGiocatore}
             rimuoviGiocatore={rimuoviGiocatore}
           />
+
+<PartiteFase partite={partite} />
+
         </main>
       </div>
     </div>

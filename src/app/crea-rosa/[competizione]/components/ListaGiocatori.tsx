@@ -62,23 +62,25 @@ export default function ListaGiocatori({
         </select>
       </div>
 
-      <div className="space-y-1">
-        {giocatori.length === 0 ? (
-          <div className="rounded-xl bg-[#07101f] px-3 py-4 text-sm text-slate-400 ring-1 ring-slate-700/70">
-            Nessun giocatore trovato.
-          </div>
-        ) : (
-          giocatori.map((g) => (
-            <GiocatoreRow
-              key={g.id}
-              giocatore={g}
-              inRosa={isInRosa(g.id)}
-              blocco={motivoBlocco(g)}
-              onAggiungi={() => aggiungiGiocatore(g)}
-              onRimuovi={() => rimuoviGiocatore(g.id)}
-            />
-          ))
-        )}
+      <div className="max-h-[320px] overflow-y-auto pr-1">
+        <div className="space-y-1">
+          {giocatori.length === 0 ? (
+            <div className="rounded-xl bg-[#07101f] px-3 py-4 text-sm text-slate-400 ring-1 ring-slate-700/70">
+              Nessun giocatore trovato.
+            </div>
+          ) : (
+            giocatori.map((g) => (
+              <GiocatoreRow
+                key={g.id}
+                giocatore={g}
+                inRosa={isInRosa(g.id)}
+                blocco={motivoBlocco(g)}
+                onAggiungi={() => aggiungiGiocatore(g)}
+                onRimuovi={() => rimuoviGiocatore(g.id)}
+              />
+            ))
+          )}
+        </div>
       </div>
     </section>
   );
