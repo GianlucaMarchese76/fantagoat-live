@@ -4,6 +4,22 @@ import CreaRosaClient from "./CreaRosaClient";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const MAPPA_SEDICESIMI: Record<
+  string,
+  { casa: string; trasferta: string; label: string }
+> = {
+  "74": { casa: "GER", trasferta: "PAR", label: "GER - PAR" },
+  "77": { casa: "FRA", trasferta: "SVE", label: "FRA - SVE" },
+  "81": { casa: "USA", trasferta: "BOS", label: "USA - BOS" },
+  "82": {
+    casa: "BEL",
+    trasferta: "3A/E/H/I/J",
+    label: "BEL - 3ª classificata",
+  },
+  "83": { casa: "2K", trasferta: "2L", label: "2K - 2L" },
+  "84": { casa: "SPA", trasferta: "2J", label: "SPA - 2J" },
+};
+
 export default async function CreaRosaCompetizionePage({
   params,
   searchParams,
@@ -69,59 +85,41 @@ export default async function CreaRosaCompetizionePage({
     .eq("competizione_id", competizioneData.id)
     .order("ordine", { ascending: true });
 
-  const partiteIds = (competizionePartite ?? []).map((p) => p.partita);
+  const partiteFase = (competizionePartite ?? [])
+    .map((p) => {
+      const numeroPartita = String(p.partita);
+      const match = MAPPA_SEDICESIMI[numeroPartita];
 
-  const { data: partiteRaw } =
-    partiteIds.length > 0
-      ? await supabase
-          .from("calendario_partite")
-          .select(
-            "partita, kickoff, nazionale, avversaria, nome_nazionale, nome_avversaria"
-          )
-          .in("partita", partiteIds)
-      : { data: [] };
-
-      const avversariByNazionale = new Map<string, string>();
-
-for (const p of partiteRaw ?? []) {
-  const nazionale = String(p.nazionale ?? "");
-  const avversaria = String(p.avversaria ?? "");
-
-  if (/^[A-Z]{3}$/.test(nazionale) && /^[A-Z]{3}$/.test(avversaria)) {
-    avversariByNazionale.set(nazionale, avversaria);
-    avversariByNazionale.set(avversaria, nazionale);
-  }
-}
-
-  const ordinePartite = new Map(
-    (competizionePartite ?? []).map((p) => [p.partita, p.ordine ?? 999])
-  );
-
-  const partiteFase = Array.from(
-  new Map(
-    (partiteRaw ?? []).map((p) => {
-      const casa = String(p.nazionale ?? "");
-      const trasferta = String(p.avversaria ?? "");
-      const numeroPartita = String(p.partita ?? "");
-
-      return [
-        numeroPartita,
-        {
-          partita: `${casa} - ${trasferta}`,
-          kickoff: p.kickoff,
-          ordine: ordinePartite.get(numeroPartita) ?? 999,
-        },
-      ];
+      return {
+        partita: match?.label ?? numeroPartita,
+        kickoff: "",
+        ordine: p.ordine ?? 999,
+      };
     })
-  ).values()
-)
-  .sort((a, b) => a.ordine - b.ordine)
-  .slice(0, 8);
+    .sort((a, b) => a.ordine - b.ordine)
+    .slice(0, 8);
+
+  const avversariByNazionale = new Map<string, string>();
+
+  for (const p of competizionePartite ?? []) {
+    const numeroPartita = String(p.partita);
+    const match = MAPPA_SEDICESIMI[numeroPartita];
+
+    if (!match) continue;
+
+    if (/^[A-Z]{3}$/.test(match.casa) && /^[A-Z]{3}$/.test(match.trasferta)) {
+      avversariByNazionale.set(match.casa, match.trasferta);
+      avversariByNazionale.set(match.trasferta, match.casa);
+    }
+  }
 
   const nazionaliAmmesse = Array.from(
     new Set(
-      (partiteRaw ?? [])
-        .flatMap((p) => [p.nazionale, p.avversaria])
+      (competizionePartite ?? [])
+        .flatMap((p) => {
+          const match = MAPPA_SEDICESIMI[String(p.partita)];
+          return match ? [match.casa, match.trasferta] : [];
+        })
         .filter((codice) => /^[A-Z]{3}$/.test(String(codice)))
     )
   );
@@ -136,16 +134,16 @@ for (const p of partiteRaw ?? []) {
       : { data: [] };
 
   const giocatoriNormalizzati =
-  giocatori?.map((g) => ({
-    id: g.id,
-    nome: g.nome,
-    ruolo: g.ruolo,
-    nazionale: g.nazionale,
-    avversaria: avversariByNazionale.get(g.nazionale) ?? null,
-    quotazione_sedicesimi: Number(
-      (g as Record<string, unknown>)[campoQuotazione] ?? 0
-    ),
-  })) ?? [];
+    giocatori?.map((g) => ({
+      id: g.id,
+      nome: g.nome,
+      ruolo: g.ruolo,
+      nazionale: g.nazionale,
+      avversaria: avversariByNazionale.get(g.nazionale) ?? null,
+      quotazione_sedicesimi: Number(
+        (g as Record<string, unknown>)[campoQuotazione] ?? 0
+      ),
+    })) ?? [];
 
   const { data: rosaSalvata } = await supabase
     .from("rose_competizione")
@@ -160,22 +158,22 @@ for (const p of partiteRaw ?? []) {
   );
 
   const { data: formazioneEsistente } = await supabase
-  .from("formazioni_competizione")
-  .select("giocatore_id, tipo, ordine, is_capitano, is_vice, modulo")
-  .eq("competizione_id", competizioneData.id)
-  .eq("partecipante_id", partecipanteData.id)
-  .order("tipo")
-  .order("ordine");
+    .from("formazioni_competizione")
+    .select("giocatore_id, tipo, ordine, is_capitano, is_vice, modulo")
+    .eq("competizione_id", competizioneData.id)
+    .eq("partecipante_id", partecipanteData.id)
+    .order("tipo")
+    .order("ordine");
 
   return (
     <CreaRosaClient
-  competizione={competizioneData}
-  partecipante={partecipanteData}
-  giocatori={giocatoriNormalizzati}
-  rosaIniziale={rosaIniziale}
-  formazioneEsistente={formazioneEsistente ?? []}
-  campoQuotazione={campoQuotazione}
-  partite={partiteFase}
-/>
+      competizione={competizioneData}
+      partecipante={partecipanteData}
+      giocatori={giocatoriNormalizzati}
+      rosaIniziale={rosaIniziale}
+      formazioneEsistente={formazioneEsistente ?? []}
+      campoQuotazione={campoQuotazione}
+      partite={partiteFase}
+    />
   );
 }
