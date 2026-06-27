@@ -12,6 +12,7 @@ type GiocatoreRosa = {
   nome: string;
   ruolo: string;
   nazionale: string;
+  avversaria: string | null;
   costo: number;
 };
 
@@ -40,7 +41,10 @@ function normalizzaModulo(modulo: string | null | undefined) {
   if (!modulo) return "M_352";
   if (MODULI[modulo]) return modulo;
 
-  const trovato = Object.entries(MODULI).find(([, value]) => value.label === modulo);
+  const trovato = Object.entries(MODULI).find(
+    ([, value]) => value.label === modulo
+  );
+
   return trovato?.[0] ?? "M_352";
 }
 
@@ -52,6 +56,29 @@ function ordinaRosa(a: GiocatoreRosa, b: GiocatoreRosa) {
   }
 
   return b.costo - a.costo;
+}
+
+function siglaNazionale(nazionale: string) {
+  return String(nazionale ?? "").split(" ")[0];
+}
+
+function labelAvversaria(g: GiocatoreRosa) {
+  const nazionale = siglaNazionale(g.nazionale);
+  const avversaria = g.avversaria ? siglaNazionale(g.avversaria) : null;
+
+  return avversaria ? `${nazionale} vs ${avversaria}` : nazionale;
+}
+
+function bandieraNazionale(nazionale: string) {
+  return `/bandiere/${siglaNazionale(nazionale)}.svg`;
+}
+
+function labelGiocatore(g: GiocatoreRosa) {
+  return `${g.nome} · ${labelAvversaria(g)} · Q${g.costo}`;
+}
+
+function labelGiocatoreConRuolo(g: GiocatoreRosa) {
+  return `[${g.ruolo}] ${labelGiocatore(g)}`;
 }
 
 export default function FormazioneClient({
@@ -90,8 +117,13 @@ export default function FormazioneClient({
     [titolari, panchina]
   );
 
-  const titolariScelti = rosaOrdinata.filter((g) => titolari.includes(g.id));
-  const panchinaScelta = rosaOrdinata.filter((g) => panchina.includes(g.id));
+  const titolariScelti = titolari
+    .map((id) => rosaOrdinata.find((g) => g.id === id))
+    .filter(Boolean) as GiocatoreRosa[];
+
+  const panchinaScelta = panchina
+    .map((id) => rosaOrdinata.find((g) => g.id === id))
+    .filter(Boolean) as GiocatoreRosa[];
 
   const formazioneCompleta =
     titolari.filter(Boolean).length === 11 &&
@@ -116,15 +148,15 @@ export default function FormazioneClient({
   }
 
   function opzioniDisponibili(ruolo: string, valoreCorrente: string) {
-  return rosaOrdinata
-    .filter((g) => g.ruolo === ruolo)
-    .filter(
-      (g) =>
-        g.id === valoreCorrente ||
-        panchina.includes(g.id) ||
-        !selezionati.includes(g.id)
-    );
-}
+    return rosaOrdinata
+      .filter((g) => g.ruolo === ruolo)
+      .filter(
+        (g) =>
+          g.id === valoreCorrente ||
+          panchina.includes(g.id) ||
+          !selezionati.includes(g.id)
+      );
+  }
 
   function opzioniPanchina(valoreCorrente: string) {
     return rosaOrdinata.filter(
@@ -133,25 +165,25 @@ export default function FormazioneClient({
   }
 
   function cambiaTitolare(index: number, nuovoId: string) {
-  const nuoviTitolari = [...titolari];
-  const nuovaPanchina = [...panchina];
+    const nuoviTitolari = [...titolari];
+    const nuovaPanchina = [...panchina];
 
-  if (nuovoId) {
-    const indexPanchina = nuovaPanchina.findIndex((id) => id === nuovoId);
+    if (nuovoId) {
+      const indexPanchina = nuovaPanchina.findIndex((id) => id === nuovoId);
 
-    if (indexPanchina !== -1) {
-      nuovaPanchina[indexPanchina] = "";
+      if (indexPanchina !== -1) {
+        nuovaPanchina[indexPanchina] = "";
+      }
     }
+
+    nuoviTitolari[index] = nuovoId;
+
+    setTitolari(nuoviTitolari);
+    setPanchina(nuovaPanchina);
+
+    if (capitano && !nuoviTitolari.includes(capitano)) setCapitano("");
+    if (vice && !nuoviTitolari.includes(vice)) setVice("");
   }
-
-  nuoviTitolari[index] = nuovoId;
-
-  setTitolari(nuoviTitolari);
-  setPanchina(nuovaPanchina);
-
-  if (capitano && !nuoviTitolari.includes(capitano)) setCapitano("");
-  if (vice && !nuoviTitolari.includes(vice)) setVice("");
-}
 
   function cambiaPanchinaro(index: number, nuovoId: string) {
     const copia = [...panchina];
@@ -170,33 +202,38 @@ export default function FormazioneClient({
 
   async function handleSalvaFormazione() {
     if (titolari.filter(Boolean).length !== 11) {
-  setMessaggio("Formazione non valida: devi selezionare 11 titolari.");
-  return;
-}
+      setMessaggio("Formazione non valida: devi selezionare 11 titolari.");
+      return;
+    }
 
-if (panchina.filter(Boolean).length !== 5) {
-  setMessaggio("Formazione non valida: devi selezionare 5 panchinari.");
-  return;
-}
+    if (panchina.filter(Boolean).length !== 5) {
+      setMessaggio("Formazione non valida: devi selezionare 5 panchinari.");
+      return;
+    }
 
-if (!capitano) {
-  setMessaggio("Formazione non valida: devi selezionare il capitano.");
-  return;
-}
+    if (!capitano) {
+      setMessaggio("Formazione non valida: devi selezionare il capitano.");
+      return;
+    }
 
-if (!vice) {
-  setMessaggio("Formazione non valida: devi selezionare il vicecapitano.");
-  return;
-}
+    if (!vice) {
+      setMessaggio("Formazione non valida: devi selezionare il vicecapitano.");
+      return;
+    }
 
-if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
-  setMessaggio("Formazione non valida: ci sono giocatori duplicati.");
-  return;
-}
+    if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
+      setMessaggio("Formazione non valida: ci sono giocatori duplicati.");
+      return;
+    }
 
     try {
       setSalvataggio(true);
       setMessaggio("");
+
+      const bonusModulo = calcolaBonusModulo(
+        MODULI[modulo].label,
+        BonusModuloEliminazione
+      );
 
       const righeTitolari = titolari.map((id, index) => ({
         competizione_id: competizione.id,
@@ -207,10 +244,7 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
         is_capitano: capitano === id,
         is_vice: vice === id,
         modulo: MODULI[modulo].label,
-        bonus_malus_modulo: calcolaBonusModulo(
-  MODULI[modulo].label,
-  BonusModuloEliminazione
-),
+        bonus_malus_modulo: bonusModulo,
       }));
 
       const righePanchina = panchina.map((id, index) => ({
@@ -222,10 +256,7 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
         is_capitano: false,
         is_vice: false,
         modulo: MODULI[modulo].label,
-        bonus_malus_modulo: calcolaBonusModulo(
-  MODULI[modulo].label,
-  BonusModuloEliminazione
-),
+        bonus_malus_modulo: bonusModulo,
       }));
 
       const { error: deleteError } = await supabase
@@ -254,7 +285,10 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
   return (
     <main className="min-h-screen bg-slate-950 p-4 text-white">
       <h1 className="text-3xl font-black">Formazione {competizione.nome}</h1>
-      <p className="mt-1 text-sm text-slate-300">Partecipante: {partecipante.nome}</p>
+
+      <p className="mt-1 text-sm text-slate-300">
+        Partecipante: {partecipante.nome}
+      </p>
 
       <section className="mt-4 rounded-2xl bg-slate-900 p-4">
         <label className="mb-2 block text-sm font-bold">Modulo</label>
@@ -274,8 +308,11 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
         <p className="mt-2 text-sm text-slate-400">
           Bonus/malus modulo:{" "}
           <span className="font-bold">
-            {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione) > 0 ? "+" : ""}
-{calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione)}
+            {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione) >
+            0
+              ? "+"
+              : ""}
+            {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione)}
           </span>
         </p>
       </section>
@@ -296,12 +333,14 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
                 className="w-full rounded-xl bg-slate-800 p-2.5 text-sm"
               >
                 <option value="">
-  {titolari[index] ? "✕ Svuota questo slot" : "Seleziona giocatore"}
-</option>
+                  {titolari[index]
+                    ? "✕ Svuota questo slot"
+                    : "➕ Seleziona giocatore"}
+                </option>
 
                 {opzioniDisponibili(ruolo, titolari[index]).map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.nome} · {g.nazionale} · Q{g.costo}
+                    {labelGiocatore(g)}
                   </option>
                 ))}
               </select>
@@ -324,11 +363,15 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
                 onChange={(e) => cambiaPanchinaro(index, e.target.value)}
                 className="w-full rounded-xl bg-slate-800 p-2.5 text-sm"
               >
-                <option value="">✕ Svuota questo slot</option>
+                <option value="">
+                  {panchina[index]
+                    ? "✕ Svuota questo slot"
+                    : "➕ Seleziona giocatore"}
+                </option>
 
                 {opzioniPanchina(panchina[index]).map((g) => (
                   <option key={g.id} value={g.id}>
-                    [{g.ruolo}] {g.nome} · {g.nazionale} · Q{g.costo}
+                    {labelGiocatoreConRuolo(g)}
                   </option>
                 ))}
               </select>
@@ -353,7 +396,7 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
                 .filter((g) => g.id !== vice)
                 .map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.nome}
+                    {labelGiocatore(g)}
                   </option>
                 ))}
             </select>
@@ -371,7 +414,7 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
                 .filter((g) => g.id !== capitano)
                 .map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.nome}
+                    {labelGiocatore(g)}
                   </option>
                 ))}
             </select>
@@ -384,33 +427,86 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
 
         <p className="font-bold">Formazione schierata</p>
 
-        <div className="mt-2 space-y-1 text-sm">
+        <div className="mt-2 space-y-2 text-sm">
           {titolariScelti.map((g) => (
-            <div key={g.id} className="flex items-center gap-2">
-              <span>{g.ruolo}</span>
-              <span>{g.nome}</span>
-
-              {capitano === g.id && (
-                <span className="rounded bg-purple-700 px-2 py-0.5 text-xs font-bold">
-                  CAP
+            <div
+              key={g.id}
+              className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="w-5 text-center font-black text-amber-300">
+                  {g.ruolo}
                 </span>
-              )}
 
-              {vice === g.id && (
-                <span className="rounded bg-sky-700 px-2 py-0.5 text-xs font-bold">
-                  VICE
+                <img
+                  src={bandieraNazionale(g.nazionale)}
+                  alt={siglaNazionale(g.nazionale)}
+                  className="h-4 w-6 rounded object-cover"
+                />
+
+                <div className="min-w-0">
+                  <div className="truncate font-bold text-white">{g.nome}</div>
+                  <div className="text-xs text-slate-400">
+                    {labelAvversaria(g)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-1">
+                {capitano === g.id && (
+                  <span className="rounded bg-purple-700 px-2 py-0.5 text-xs font-bold">
+                    CAP
+                  </span>
+                )}
+
+                {vice === g.id && (
+                  <span className="rounded bg-sky-700 px-2 py-0.5 text-xs font-bold">
+                    VICE
+                  </span>
+                )}
+
+                <span className="text-xs font-bold text-slate-400">
+                  Q{g.costo}
                 </span>
-              )}
+              </div>
             </div>
           ))}
         </div>
 
         <p className="mt-4 font-bold">Panchina</p>
 
-        <div className="mt-2 space-y-1 text-sm text-slate-300">
-          {panchinaScelta.map((g) => (
-            <div key={g.id}>
-              {g.ruolo} · {g.nome}
+        <div className="mt-2 space-y-2 text-sm text-slate-300">
+          {panchinaScelta.map((g, index) => (
+            <div
+              key={g.id}
+              className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="w-7 text-xs font-black text-slate-400">
+                  P{index + 1}
+                </span>
+
+                <span className="w-5 text-center font-black text-amber-300">
+                  {g.ruolo}
+                </span>
+
+                <img
+                  src={bandieraNazionale(g.nazionale)}
+                  alt={siglaNazionale(g.nazionale)}
+                  className="h-4 w-6 rounded object-cover"
+                />
+
+                <div className="min-w-0">
+                  <div className="truncate font-bold text-white">{g.nome}</div>
+                  <div className="text-xs text-slate-400">
+                    {labelAvversaria(g)}
+                  </div>
+                </div>
+              </div>
+
+              <span className="text-xs font-bold text-slate-400">
+                Q{g.costo}
+              </span>
             </div>
           ))}
         </div>
@@ -442,15 +538,15 @@ if (new Set([...titolari, ...panchina].filter(Boolean)).size !== 16) {
         </button>
 
         {messaggio && (
-  <div className="rounded-xl bg-slate-900 p-3 text-sm font-bold">
-    {messaggio}{" "}
-    {messaggio === "Formazione salvata." && (
-      <a href="/" className="text-emerald-300 underline">
-        Torna alla home
-      </a>
-    )}
-  </div>
-)}
+          <div className="rounded-xl bg-slate-900 p-3 text-sm font-bold">
+            {messaggio}{" "}
+            {messaggio === "Formazione salvata." && (
+              <a href="/" className="text-emerald-300 underline">
+                Torna alla home
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

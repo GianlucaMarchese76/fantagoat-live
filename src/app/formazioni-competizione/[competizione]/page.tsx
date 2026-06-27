@@ -67,23 +67,51 @@ if (!rose || rose.length === 0) {
 
   const idsGiocatori = rose?.map((r) => r.giocatore_id) ?? [];
 
-  const { data: giocatori } = await supabase
-    .from("giocatori")
-    .select("id, nome, ruolo, nazionale")
-    .in("id", idsGiocatori);
+const { data: competizionePartite } = await supabase
+  .from("competizioni_partite")
+  .select("partita, ordine")
+  .eq("competizione_id", competizioneData.id)
+  .order("ordine", { ascending: true });
 
+const partiteIds = (competizionePartite ?? []).map((p) => p.partita);
+
+const { data: partiteRaw } =
+  partiteIds.length > 0
+    ? await supabase
+        .from("calendario_partite")
+        .select("partita, nazionale, avversaria")
+        .in("partita", partiteIds)
+    : { data: [] };
+
+const avversariByNazionale = new Map<string, string>();
+
+for (const p of partiteRaw ?? []) {
+  const nazionale = String(p.nazionale ?? "");
+  const avversaria = String(p.avversaria ?? "");
+
+  if (/^[A-Z]{3}$/.test(nazionale) && /^[A-Z]{3}$/.test(avversaria)) {
+    avversariByNazionale.set(nazionale, avversaria);
+    avversariByNazionale.set(avversaria, nazionale);
+  }
+}
+
+const { data: giocatori } = await supabase
+  .from("giocatori")
+  .select("id, nome, ruolo, nazionale")
+  .in("id", idsGiocatori);
   const giocatoriRosa =
     giocatori?.map((g) => {
       const rigaRosa = rose?.find((r) => r.giocatore_id === g.id);
 
       return {
-        id: g.id,
-        nome: g.nome,
-        ruolo: g.ruolo,
-        nazionale: g.nazionale,
-        costo: Number(rigaRosa?.costo ?? 0),
-      };
-    }) ?? [];
+  id: g.id,
+  nome: g.nome,
+  ruolo: g.ruolo,
+  nazionale: String(g.nazionale).split(" ")[0],
+avversaria:
+  avversariByNazionale.get(String(g.nazionale).split(" ")[0]) ?? null,
+  costo: Number(rigaRosa?.costo ?? 0),
+};  }) ?? [];
 
   const { data: formazioneSalvata } = await supabase
     .from("formazioni_competizione")
