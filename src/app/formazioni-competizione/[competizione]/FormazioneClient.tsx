@@ -73,8 +73,23 @@ function bandieraNazionale(nazionale: string) {
   return `/bandiere/${siglaNazionale(nazionale)}.svg`;
 }
 
+function classeRuolo(ruolo: string) {
+  switch (ruolo) {
+    case "P":
+      return "bg-sky-900/70 text-sky-200 ring-sky-500/40";
+    case "D":
+      return "bg-emerald-900/70 text-emerald-200 ring-emerald-500/40";
+    case "C":
+      return "bg-amber-900/70 text-amber-200 ring-amber-500/40";
+    case "A":
+      return "bg-rose-900/70 text-rose-200 ring-rose-500/40";
+    default:
+      return "bg-slate-800 text-slate-200 ring-slate-600";
+  }
+}
+
 function labelGiocatore(g: GiocatoreRosa) {
-  return `${g.nome} · ${labelAvversaria(g)} · Q${g.costo}`;
+  return `${g.nome} · ${labelAvversaria(g)}`;
 }
 
 function labelGiocatoreConRuolo(g: GiocatoreRosa) {
@@ -283,20 +298,44 @@ export default function FormazioneClient({
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 p-4 text-white">
-      <h1 className="text-3xl font-black">Formazione {competizione.nome}</h1>
+    <main className="min-h-screen bg-[#08111d] p-4 text-white">
+      <header className="rounded-3xl border border-slate-700/70 bg-gradient-to-br from-slate-900 to-slate-950 p-5 shadow-xl">
+        <div className="text-xs font-black uppercase tracking-[0.25em] text-emerald-300">
+          🐐 FantaGOAT
+        </div>
 
-      <p className="mt-1 text-sm text-slate-300">
-        Partecipante: {partecipante.nome}
-      </p>
+        <h1 className="mt-2 text-3xl font-black">Formazione</h1>
 
-      <section className="mt-4 rounded-2xl bg-slate-900 p-4">
-        <label className="mb-2 block text-sm font-bold">Modulo</label>
+        <p className="mt-1 text-sm text-slate-300">
+          {competizione.nome} · {partecipante.nome}
+        </p>
+      </header>
+
+      <section className="mt-4 rounded-3xl border border-slate-700/70 bg-[#101a2d] p-4 shadow-lg">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black">Modulo</h2>
+            <p className="text-sm text-slate-400">
+              Scegli il modulo da schierare.
+            </p>
+          </div>
+
+          <div className="text-right text-sm text-slate-400">
+            Bonus/malus{" "}
+            <span className="ml-1 font-black text-emerald-300">
+              {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione) >
+              0
+                ? "+"
+                : ""}
+              {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione)}
+            </span>
+          </div>
+        </div>
 
         <select
           value={modulo}
           onChange={(e) => resetModulo(e.target.value)}
-          className="w-full rounded-xl bg-slate-800 p-3"
+          className="w-full rounded-2xl border border-slate-700 bg-slate-950 p-3 text-sm font-bold text-white"
         >
           {Object.entries(MODULI).map(([key, value]) => (
             <option key={key} value={key}>
@@ -304,33 +343,32 @@ export default function FormazioneClient({
             </option>
           ))}
         </select>
-
-        <p className="mt-2 text-sm text-slate-400">
-          Bonus/malus modulo:{" "}
-          <span className="font-bold">
-            {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione) >
-            0
-              ? "+"
-              : ""}
-            {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione)}
-          </span>
-        </p>
       </section>
 
-      <section className="mt-3 rounded-2xl bg-slate-900 p-4">
-        <h2 className="mb-3 text-xl font-bold">Titolari</h2>
+      <section className="mt-3 rounded-3xl border border-slate-700/70 bg-[#101a2d] p-4 shadow-lg">
+        <h2 className="mb-3 text-xl font-black">Titolari</h2>
 
-        <div className="grid gap-2">
+        <div className="grid gap-3">
           {ruoliTitolari.map((ruolo, index) => (
-            <div key={index} className="grid gap-1">
-              <label className="text-sm font-semibold">
-                T{index + 1} · {ruolo}
+            <div
+              key={index}
+              className="rounded-2xl bg-slate-950/70 p-3 ring-1 ring-slate-700/80"
+            >
+              <label className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-black ring-1 ${classeRuolo(
+                    ruolo
+                  )}`}
+                >
+                  {ruolo}
+                </span>
+                <span>T{index + 1}</span>
               </label>
 
               <select
                 value={titolari[index]}
                 onChange={(e) => cambiaTitolare(index, e.target.value)}
-                className="w-full rounded-xl bg-slate-800 p-2.5 text-sm"
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-sm text-white"
               >
                 <option value="">
                   {titolari[index]
@@ -349,19 +387,28 @@ export default function FormazioneClient({
         </div>
       </section>
 
-      <section className="mt-3 rounded-2xl bg-slate-900 p-4">
-        <h2 className="mb-2 text-xl font-bold">Panchina</h2>
-        <p className="mb-3 text-sm text-slate-400">Ordine sostituzioni.</p>
+      <section className="mt-3 rounded-3xl border border-slate-700/70 bg-[#101a2d] p-4 shadow-lg">
+        <h2 className="mb-2 text-xl font-black">Panchina</h2>
 
-        <div className="grid gap-2">
+        <p className="mb-3 text-sm text-slate-400">
+          L’ordine della panchina determina la priorità degli ingressi, a
+          condizione che il modulo risultante sia tra quelli consentiti.
+        </p>
+
+        <div className="grid gap-3">
           {Array.from({ length: 5 }, (_, index) => (
-            <div key={index} className="grid gap-1">
-              <label className="text-sm font-semibold">P{index + 1}</label>
+            <div
+              key={index}
+              className="rounded-2xl bg-slate-950/70 p-3 ring-1 ring-slate-700/80"
+            >
+              <label className="mb-2 block text-sm font-semibold">
+                P{index + 1}
+              </label>
 
               <select
                 value={panchina[index]}
                 onChange={(e) => cambiaPanchinaro(index, e.target.value)}
-                className="w-full rounded-xl bg-slate-800 p-2.5 text-sm"
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-sm text-white"
               >
                 <option value="">
                   {panchina[index]
@@ -380,16 +427,17 @@ export default function FormazioneClient({
         </div>
       </section>
 
-      <section className="mt-3 rounded-2xl bg-slate-900 p-4">
-        <h2 className="mb-3 text-xl font-bold">Capitano e vice</h2>
-
-        <div className="grid gap-3 md:grid-cols-2">
+      <section className="mt-3 rounded-3xl border border-slate-700/70 bg-[#101a2d] p-4 shadow-lg">
+        <div className="grid gap-4">
           <div>
-            <label className="text-sm font-semibold">Capitano</label>
+            <label className="mb-1 block text-sm font-bold text-slate-300">
+              Capitano
+            </label>
+
             <select
               value={capitano}
               onChange={(e) => setCapitano(e.target.value)}
-              className="mt-1 w-full rounded-xl bg-slate-800 p-2.5 text-sm"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-sm text-white"
             >
               <option value="">Seleziona capitano</option>
               {titolariScelti
@@ -403,11 +451,14 @@ export default function FormazioneClient({
           </div>
 
           <div>
-            <label className="text-sm font-semibold">Vicecapitano</label>
+            <label className="mb-1 block text-sm font-bold text-slate-300">
+              Vicecapitano
+            </label>
+
             <select
               value={vice}
               onChange={(e) => setVice(e.target.value)}
-              className="mt-1 w-full rounded-xl bg-slate-800 p-2.5 text-sm"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-sm text-white"
             >
               <option value="">Seleziona vice</option>
               {titolariScelti
@@ -422,19 +473,21 @@ export default function FormazioneClient({
         </div>
       </section>
 
-      <section className="mt-3 rounded-2xl bg-slate-900 p-4">
-        <h2 className="mb-3 text-xl font-bold">Riepilogo</h2>
-
-        <p className="font-bold">Formazione schierata</p>
+      <section className="mt-3 rounded-3xl border border-slate-700/70 bg-[#101a2d] p-4 shadow-lg">
+        <h2 className="mb-3 text-xl font-black">Formazione schierata</h2>
 
         <div className="mt-2 space-y-2 text-sm">
           {titolariScelti.map((g) => (
             <div
               key={g.id}
-              className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
+              className="flex items-center justify-between rounded-xl bg-slate-900 px-3 py-2 ring-1 ring-slate-700/70"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <span className="w-5 text-center font-black text-amber-300">
+                <span
+                  className={`w-8 rounded-full py-1 text-center text-xs font-black ring-1 ${classeRuolo(
+                    g.ruolo
+                  )}`}
+                >
                   {g.ruolo}
                 </span>
 
@@ -464,29 +517,29 @@ export default function FormazioneClient({
                     VICE
                   </span>
                 )}
-
-                <span className="text-xs font-bold text-slate-400">
-                  Q{g.costo}
-                </span>
               </div>
             </div>
           ))}
         </div>
 
-        <p className="mt-4 font-bold">Panchina</p>
+        <p className="mt-5 font-bold">Panchina</p>
 
         <div className="mt-2 space-y-2 text-sm text-slate-300">
           {panchinaScelta.map((g, index) => (
             <div
               key={g.id}
-              className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
+              className="flex items-center justify-between rounded-xl bg-slate-900 px-3 py-2 ring-1 ring-slate-700/70"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="w-7 text-xs font-black text-slate-400">
                   P{index + 1}
                 </span>
 
-                <span className="w-5 text-center font-black text-amber-300">
+                <span
+                  className={`w-8 rounded-full py-1 text-center text-xs font-black ring-1 ${classeRuolo(
+                    g.ruolo
+                  )}`}
+                >
                   {g.ruolo}
                 </span>
 
@@ -503,10 +556,6 @@ export default function FormazioneClient({
                   </div>
                 </div>
               </div>
-
-              <span className="text-xs font-bold text-slate-400">
-                Q{g.costo}
-              </span>
             </div>
           ))}
         </div>
@@ -520,34 +569,43 @@ export default function FormazioneClient({
       )}
 
       <div className="mt-4 grid gap-3">
-        <button
-          type="button"
-          onClick={ripristinaFormazioneSalvata}
-          className="w-full rounded-2xl bg-slate-700 py-3 text-base font-bold"
-        >
-          ↩ Ripristina formazione salvata
-        </button>
+  <a
+    href={`/crea-rosa/${competizione.codice}?partecipante=${encodeURIComponent(
+      partecipante.slug
+    )}`}
+    className="block w-full rounded-2xl bg-slate-700 py-3 text-center text-base font-bold text-white transition hover:bg-slate-600"
+  >
+    ← Torna alla rosa
+  </a>
 
-        <button
-          type="button"
-          onClick={handleSalvaFormazione}
-          disabled={salvataggio || !formazioneCompleta}
-          className="w-full rounded-2xl bg-emerald-600 py-3 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {salvataggio ? "Salvataggio..." : "Salva formazione"}
-        </button>
+  <button
+    type="button"
+    onClick={ripristinaFormazioneSalvata}
+    className="w-full rounded-2xl bg-slate-600 py-3 text-base font-bold text-white transition hover:bg-slate-500"
+  >
+    ↩ Ripristina formazione salvata
+  </button>
 
-        {messaggio && (
-          <div className="rounded-xl bg-slate-900 p-3 text-sm font-bold">
-            {messaggio}{" "}
-            {messaggio === "Formazione salvata." && (
-              <a href="/" className="text-emerald-300 underline">
-                Torna alla home
-              </a>
-            )}
-          </div>
-        )}
-      </div>
+  <button
+    type="button"
+    onClick={handleSalvaFormazione}
+    disabled={salvataggio || !formazioneCompleta}
+    className="w-full rounded-2xl bg-emerald-600 py-3 text-base font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {salvataggio ? "Salvataggio..." : "✓ Salva formazione"}
+  </button>
+
+  {messaggio && (
+    <div className="rounded-xl bg-slate-900 p-3 text-sm font-bold">
+      {messaggio}{" "}
+      {messaggio === "Formazione salvata." && (
+        <a href="/" className="text-emerald-300 underline">
+          Torna alla home
+        </a>
+      )}
+    </div>
+  )}
+</div>
     </main>
   );
 }
