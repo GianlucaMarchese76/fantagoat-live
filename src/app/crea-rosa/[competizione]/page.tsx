@@ -8,7 +8,9 @@ const MAPPA_SEDICESIMI: Record<
   string,
   { casa: string; trasferta: string; label: string }
 > = {
+  "73": { casa: "CAN", trasferta: "SUD", label: "CAN - SUD" },
   "74": { casa: "GER", trasferta: "PAR", label: "GER - PAR" },
+  "75": { casa: "OLA", trasferta: "MAR", label: "OLA - MAR" },
   "77": { casa: "FRA", trasferta: "SVE", label: "FRA - SVE" },
   "81": { casa: "USA", trasferta: "BOS", label: "USA - BOS" },
   "82": {
