@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const TESTO_PROSSIMA_SCADENZA =
-  "Sedicesimi di finale Gare 1-8";
+  "Sedicesimi di finale Gare 9-16";
 
 export default async function Home() {
   const cookieStore = await cookies();
