@@ -1,8 +1,7 @@
 import { supabase } from "../../../../../lib/supabase";
 
 import {
-  calcolaFormazioneEffettiva,
-  calcolaTotaleFormazione,
+  calcolaDettaglioFormazione,
   votoDaUsare,
 } from "../../../../../lib/fantagoat";
 
@@ -57,11 +56,11 @@ export default async function FormazionePage({
     .eq("blocco", bloccoNorm)
     .order("ordine");
 
-  const titolari = data?.filter((g) => g.tipo === "Titolare") ?? [];
   const panchina = data?.filter((g) => g.tipo === "Panchina") ?? [];
 
-  const risultato = calcolaFormazioneEffettiva(titolari, panchina);
-  const totaleFinale = calcolaTotaleFormazione(data ?? []);
+  const dettaglio = calcolaDettaglioFormazione(data ?? []);
+  const risultato = dettaglio.risultato;
+  const totaleFinale = dettaglio.totaleFinale;
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">
@@ -107,13 +106,54 @@ export default async function FormazionePage({
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-4 mt-4">
-          <h2 className="font-bold text-lg mb-3">
-            Riepilogo punteggio
-          </h2>
+          <h2 className="font-bold text-lg mb-4">Riepilogo punteggio</h2>
 
-          <div className="flex justify-between text-xl font-bold">
-            <span>Totale</span>
-            <span>{totaleFinale}</span>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Fantapunti giocatori</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.totaleGiocatori}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Bonus/Malus capitano</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.bonusCapitano >= 0 ? "+" : ""}
+                {dettaglio.bonusCapitano}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Modificatore difesa</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.modificatoreDifesa >= 0 ? "+" : ""}
+                {dettaglio.modificatoreDifesa}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Modificatore centrocampo</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.modificatoreCentrocampo >= 0 ? "+" : ""}
+                {dettaglio.modificatoreCentrocampo}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Bonus/Malus modulo</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.bonusModulo >= 0 ? "+" : ""}
+                {dettaglio.bonusModulo}
+              </span>
+            </div>
+
+            <hr className="my-3" />
+
+            <div className="flex justify-between text-2xl font-black">
+              <span>Totale</span>
+              <span className="tabular-nums">{totaleFinale}</span>
+            </div>
           </div>
         </div>
       </header>
@@ -135,8 +175,8 @@ export default async function FormazionePage({
                 g.stato === "entrato"
                   ? "border-2 border-green-300"
                   : g.stato === "ufficio"
-                  ? "border-2 border-red-300"
-                  : ""
+                    ? "border-2 border-red-300"
+                    : ""
               }`}
             >
               <div>
@@ -196,10 +236,7 @@ export default async function FormazionePage({
           )}
 
           {risultato.sostituzioni.map((s, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl px-4 py-3 shadow-sm"
-            >
+            <div key={index} className="bg-white rounded-xl px-4 py-3 shadow-sm">
               {s.tipo === "sostituzione" ? (
                 <>
                   <div className="font-semibold">
