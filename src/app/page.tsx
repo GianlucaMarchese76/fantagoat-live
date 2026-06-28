@@ -206,12 +206,8 @@ export default async function Home() {
 </div>
 
               <div className="text-sm text-blue-100">
-                {prossimaDeadline.deadline.toLocaleString("it-IT", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                  timeZone: "Europe/Rome",
-                })}
-              </div>
+  29/06/26, 18:55
+</div>
             </div>
           )}
 
