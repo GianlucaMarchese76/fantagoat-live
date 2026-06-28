@@ -59,6 +59,21 @@ export default function CreaRosaClient({
   const MAX_PER_NAZIONALE = competizione.max_per_nazionale;
   const competizioneChiusa = !competizione.attiva || competizione.conclusa;
 
+  const avversariByNazionale = useMemo(() => {
+  const map = new Map<string, string>();
+
+  for (const p of partite) {
+    const [a, b] = p.partita.split("-").map((x) => x.trim());
+
+    if (a && b) {
+      map.set(a, b);
+      map.set(b, a);
+    }
+  }
+
+  return map;
+}, [partite]);
+
   const [ricerca, setRicerca] = useState("");
   const [ruoloFiltro, setRuoloFiltro] = useState<FiltroRuolo>("P");
   const [ordinamento, setOrdinamento] =
@@ -88,7 +103,12 @@ export default function CreaRosaClient({
   );
 
   const giocatoriFiltrati = useMemo(() => {
-    return [...giocatori]
+    return [...giocatori].map((g) => ({
+  ...g,
+  avversaria:
+    g.avversaria ??
+    avversariByNazionale.get(String(g.nazionale ?? "").trim().toUpperCase()),
+}))
       .filter((g) => {
         const testo = ricerca.toLowerCase();
 
@@ -121,7 +141,7 @@ export default function CreaRosaClient({
         if (ordinamento === "prezzoAsc") return qa - qb;
         return qb - qa;
       });
-  }, [giocatori, ricerca, ruoloFiltro, ordinamento]);
+  }, [giocatori, ricerca, ruoloFiltro, ordinamento, avversariByNazionale]);
 
   function isInRosa(id: number) {
     return selezionatiIds.has(id);

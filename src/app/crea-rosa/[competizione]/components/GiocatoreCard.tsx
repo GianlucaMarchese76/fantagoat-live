@@ -32,6 +32,7 @@ export default function GiocatoreRow({
         <div className="mt-1 flex items-center gap-2 text-xs">
   <span className="text-slate-400">
     {giocatore.nazionale}
+{giocatore.avversaria ? ` vs ${giocatore.avversaria}` : ""}
   </span>
 
   <span className="font-bold text-white tabular-nums">

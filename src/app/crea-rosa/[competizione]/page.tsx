@@ -50,18 +50,18 @@ export default async function CreaRosaCompetizionePage({
     );
   }
 
-  const campoQuotazione =
-    competizioneData.codice === "16ALTA" ||
-    competizioneData.codice === "16BASSA"
-      ? "quotazione_sedicesimi"
-      : competizioneData.codice === "8ALTA" ||
-          competizioneData.codice === "8BASSA"
-        ? "quotazione_ottavi"
-        : competizioneData.codice === "QUARTI"
-          ? "quotazione_quarti"
-          : competizioneData.codice === "SEMIFINALI"
-            ? "quotazione_semifinali"
-            : "quotazione_finale";
+const campoQuotazione =
+  competizioneData.codice === "16ALTA" ||
+  competizioneData.codice === "16BASSA"
+    ? "quotazione_sedicesimi"
+    : competizioneData.codice === "8ALTA" ||
+        competizioneData.codice === "8BASSA"
+      ? "quotazione_ottavi"
+      : competizioneData.codice === "QUARTI"
+        ? "quotazione_quarti"
+        : competizioneData.codice === "SEMIFINALI"
+          ? "quotazione_semifinali"
+          : "quotazione_finale";
 
   const { data: competizionePartite } = await supabase
     .from("competizioni_partite")
@@ -79,8 +79,8 @@ export default async function CreaRosaCompetizionePage({
   const partiteFase =
     competizionePartite
       ?.map((p) => {
-        const squadraA = String(p.squadra_a ?? "");
-        const squadraB = String(p.squadra_b ?? "");
+        const squadraA = String(p.squadra_a ?? "").trim().toUpperCase();
+const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
 
         return {
           partita:
@@ -97,8 +97,8 @@ export default async function CreaRosaCompetizionePage({
   const avversariByNazionale = new Map<string, string>();
 
   for (const p of partiteValide) {
-    const squadraA = String(p.squadra_a);
-    const squadraB = String(p.squadra_b);
+    const squadraA = String(p.squadra_a ?? "").trim().toUpperCase();
+const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
 
     avversariByNazionale.set(squadraA, squadraB);
     avversariByNazionale.set(squadraB, squadraA);
@@ -128,7 +128,9 @@ export default async function CreaRosaCompetizionePage({
       nome: g.nome,
       ruolo: g.ruolo,
       nazionale: g.nazionale,
-      avversaria: avversariByNazionale.get(g.nazionale) ?? null,
+      avversaria:
+  avversariByNazionale.get(String(g.nazionale ?? "").trim().toUpperCase()) ??
+  undefined,
       quotazione_sedicesimi: Number(
         (g as Record<string, unknown>)[campoQuotazione] ?? 0
       ),

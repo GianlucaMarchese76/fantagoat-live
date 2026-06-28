@@ -6,6 +6,7 @@ export type Giocatore = {
   nome: string;
   ruolo: Ruolo;
   nazionale: string;
+  avversaria?: string;
   quotazione_sedicesimi: number | null;
 };
 
