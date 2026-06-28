@@ -4,24 +4,6 @@ import CreaRosaClient from "./CreaRosaClient";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const MAPPA_SEDICESIMI: Record<
-  string,
-  { casa: string; trasferta: string; label: string }
-> = {
-  "73": { casa: "CAN", trasferta: "SUD", label: "CAN - SUD" },
-  "74": { casa: "GER", trasferta: "PAR", label: "GER - PAR" },
-  "75": { casa: "OLA", trasferta: "MAR", label: "OLA - MAR" },
-  "77": { casa: "FRA", trasferta: "SVE", label: "FRA - SVE" },
-  "81": { casa: "USA", trasferta: "BOS", label: "USA - BOS" },
-  "82": {
-    casa: "BEL",
-    trasferta: "3A/E/H/I/J",
-    label: "BEL - 3ª classificata",
-  },
-  "83": { casa: "2K", trasferta: "2L", label: "2K - 2L" },
-  "84": { casa: "SPA", trasferta: "2J", label: "SPA - 2J" },
-};
-
 export default async function CreaRosaCompetizionePage({
   params,
   searchParams,
@@ -83,46 +65,51 @@ export default async function CreaRosaCompetizionePage({
 
   const { data: competizionePartite } = await supabase
     .from("competizioni_partite")
-    .select("partita, ordine")
+    .select("numero_match, squadra_a, squadra_b, label, kickoff, ordine")
     .eq("competizione_id", competizioneData.id)
     .order("ordine", { ascending: true });
 
-  const partiteFase = (competizionePartite ?? [])
-    .map((p) => {
-      const numeroPartita = String(p.partita);
-      const match = MAPPA_SEDICESIMI[numeroPartita];
+  const partiteValide =
+    competizionePartite?.filter(
+      (p) =>
+        /^[A-Z]{3}$/.test(String(p.squadra_a ?? "")) &&
+        /^[A-Z]{3}$/.test(String(p.squadra_b ?? ""))
+    ) ?? [];
 
-      return {
-        partita: match?.label ?? numeroPartita,
-        kickoff: "",
-        ordine: p.ordine ?? 999,
-      };
-    })
-    .sort((a, b) => a.ordine - b.ordine)
-    .slice(0, 8);
+  const partiteFase =
+    competizionePartite
+      ?.map((p) => {
+        const squadraA = String(p.squadra_a ?? "");
+        const squadraB = String(p.squadra_b ?? "");
+
+        return {
+          partita:
+            p.label ??
+            (squadraA && squadraB
+              ? `${squadraA} - ${squadraB}`
+              : String(p.numero_match ?? "")),
+          kickoff: p.kickoff ?? "",
+          ordine: p.ordine ?? 999,
+        };
+      })
+      .sort((a, b) => a.ordine - b.ordine) ?? [];
 
   const avversariByNazionale = new Map<string, string>();
 
-  for (const p of competizionePartite ?? []) {
-    const numeroPartita = String(p.partita);
-    const match = MAPPA_SEDICESIMI[numeroPartita];
+  for (const p of partiteValide) {
+    const squadraA = String(p.squadra_a);
+    const squadraB = String(p.squadra_b);
 
-    if (!match) continue;
-
-    if (/^[A-Z]{3}$/.test(match.casa) && /^[A-Z]{3}$/.test(match.trasferta)) {
-      avversariByNazionale.set(match.casa, match.trasferta);
-      avversariByNazionale.set(match.trasferta, match.casa);
-    }
+    avversariByNazionale.set(squadraA, squadraB);
+    avversariByNazionale.set(squadraB, squadraA);
   }
 
   const nazionaliAmmesse = Array.from(
     new Set(
-      (competizionePartite ?? [])
-        .flatMap((p) => {
-          const match = MAPPA_SEDICESIMI[String(p.partita)];
-          return match ? [match.casa, match.trasferta] : [];
-        })
-        .filter((codice) => /^[A-Z]{3}$/.test(String(codice)))
+      partiteValide.flatMap((p) => [
+        String(p.squadra_a),
+        String(p.squadra_b),
+      ])
     )
   );
 
