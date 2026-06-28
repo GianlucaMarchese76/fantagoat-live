@@ -28,6 +28,8 @@ export default async function Home() {
         .maybeSingle()
     : { data: null };
 
+    const codiceCompetizioneHome = "16BASSA";
+
   const { data: competizioneAttiva } = await supabase
     .from("competizioni")
     .select("*")
@@ -50,12 +52,12 @@ export default async function Home() {
     const rosaCompleta = (rosaCompetizione ?? []).length === 16;
 
     hrefSchiera = rosaCompleta
-      ? `/formazioni-competizione/${competizioneAttiva.codice}?partecipante=${encodeURIComponent(
-          partecipanteLoggato.slug
-        )}`
-      : `/crea-rosa/${competizioneAttiva.codice}?partecipante=${encodeURIComponent(
-          partecipanteLoggato.slug
-        )}`;
+  ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+      partecipanteLoggato.slug
+    )}`
+  : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+      partecipanteLoggato.slug
+    )}`;
 
     testoSchiera = rosaCompleta
       ? "Vai alla tua formazione"
