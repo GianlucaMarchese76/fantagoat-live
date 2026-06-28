@@ -9,7 +9,9 @@ const filePath = process.argv[2];
 
 if (!filePath) {
   console.error("Errore: indica il file Excel.");
-  console.error("Uso: npm run import-gol-decisivi -- data/punteggi/gol_decisivi.xlsx");
+  console.error(
+    "Uso: npm run import-gol-decisivi -- data/punteggi/gol_decisivi.xlsx"
+  );
   process.exit(1);
 }
 
@@ -22,16 +24,15 @@ if (!supabaseUrl || !serviceRoleKey) {
   );
 }
 
-const supabase = createClient(
-  supabaseUrl,
-  serviceRoleKey
-);
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 type RigaExcel = {
   giornata: string;
   blocco: string;
   giocatore: string;
   nazionale: string;
+  ruolo?: string;
+  Position?: string;
 };
 
 function normalizza(value: unknown) {
@@ -53,32 +54,69 @@ async function main() {
     const giocatore = normalizza(row.giocatore);
     const nazionale = normalizza(row.nazionale);
 
+    // accetta sia "ruolo" sia "Position"
+    const ruolo = normalizza(row.ruolo || row.Position);
+
     if (!giornata || !blocco || !giocatore || !nazionale) {
       console.warn("Riga saltata:", row);
       continue;
     }
 
-    const { data: giocatoreData, error: giocatoreError } = await supabase
+    // 1° ricerca: nome + nazionale
+    const { data: candidati, error } = await supabase
       .from("giocatori")
-      .select("id, nome")
+      .select("id,nome,ruolo")
       .ilike("nome", giocatore)
-      .eq("nazionale", nazionale)
-      .single();
+      .eq("nazionale", nazionale);
 
-    if (giocatoreError || !giocatoreData) {
+    if (error) {
       console.error(
-  `Giocatore non trovato: ${giocatore} (${nazionale})`
-);
+        `Errore ricerca ${giocatore}: ${error.message}`
+      );
       continue;
     }
 
-    const { error } = await supabase
+    if (!candidati || candidati.length === 0) {
+      console.error(
+        `Giocatore non trovato: ${giocatore} (${nazionale})`
+      );
+      continue;
+    }
+
+    let giocatori = candidati;
+
+    // Se ambiguo e il ruolo è presente, filtra
+    if (giocatori.length > 1 && ruolo) {
+      giocatori = giocatori.filter(
+        (g) => normalizza(g.ruolo) === ruolo
+      );
+    }
+
+    if (giocatori.length === 0) {
+      console.error(
+        `Nessun giocatore con ruolo ${ruolo}: ${giocatore} (${nazionale})`
+      );
+      continue;
+    }
+
+    if (giocatori.length > 1) {
+      console.error(
+        `Giocatore ambiguo: ${giocatore} (${nazionale}) -> ${giocatori
+          .map((g) => `${g.nome} ${g.ruolo}`)
+          .join(", ")}`
+      );
+      continue;
+    }
+
+    const g = giocatori[0];
+
+    const { error: upsertError } = await supabase
       .from("gol_decisivi")
       .upsert(
         {
           giornata,
           blocco,
-          giocatore_id: giocatoreData.id,
+          giocatore_id: g.id,
           punti: 1,
         },
         {
@@ -86,12 +124,16 @@ async function main() {
         }
       );
 
-    if (error) {
-      console.error(`Errore inserimento ${giocatore}:`, error.message);
+    if (upsertError) {
+      console.error(
+        `Errore inserimento ${giocatore}: ${upsertError.message}`
+      );
       continue;
     }
 
-    console.log(`OK: ${giornata} ${blocco} - ${giocatoreData.nome}`);
+    console.log(
+      `OK: ${giornata} ${blocco} - ${g.nome} ${g.ruolo}`
+    );
   }
 
   console.log("Import gol decisivi completato.");

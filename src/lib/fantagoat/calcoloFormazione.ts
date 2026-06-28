@@ -42,14 +42,6 @@ function puoEntrareLive(g: any) {
   );
 }
 
-function giornataConclusa(giocatori: any[]) {
-  return giocatori.every(
-    (g) =>
-      g.stato_giocatore === "ha_voto" ||
-      g.stato_giocatore === "non_ha_giocato"
-  );
-}
-
 function moduloDaGiocatori(giocatori: any[]) {
   const d = giocatori.filter((g) => g.ruolo === "D").length;
   const c = giocatori.filter((g) => g.ruolo === "C").length;
@@ -74,10 +66,7 @@ function fantapuntiDaUsare(g: any) {
   return numero(g.fantapunti_live ?? g.fantapunti);
 }
 
-export function calcolaFormazioneEffettiva(
-  titolari: any[],
-  panchina: any[]
-) {
+export function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
   const effettivi = titolari.map((g) => ({
     ...g,
     fantapunti_calcolo: fantapuntiDaUsare(g),
@@ -201,9 +190,7 @@ export function calcolaModDifesa(effettivi: any[]) {
 
   const media =
     (votoDaUsare(portiere) +
-      difensori
-        .slice(0, 3)
-        .reduce((s, g) => s + votoDaUsare(g), 0)) /
+      difensori.slice(0, 3).reduce((s, g) => s + votoDaUsare(g), 0)) /
     4;
 
   if (media >= 7) return 5;
@@ -223,9 +210,7 @@ export function calcolaModCentrocampo(effettivi: any[]) {
   if (centrocampisti.length < 3) return 0;
 
   const media =
-    centrocampisti
-      .slice(0, 3)
-      .reduce((s, g) => s + votoDaUsare(g), 0) / 3;
+    centrocampisti.slice(0, 3).reduce((s, g) => s + votoDaUsare(g), 0) / 3;
 
   if (media >= 6.75) return 3;
   if (media >= 6.5) return 2;
@@ -234,20 +219,53 @@ export function calcolaModCentrocampo(effettivi: any[]) {
   return 0;
 }
 
-export function calcolaTotaleFormazione(rows: any[]) {
+export function calcolaDettaglioFormazione(rows: any[]) {
   const titolari = rows.filter((g) => g.tipo === "Titolare");
   const panchina = rows.filter((g) => g.tipo === "Panchina");
 
   const risultato = calcolaFormazioneEffettiva(titolari, panchina);
 
-  return (
-    risultato.totaleGiocatori +
-    calcolaVotoCapitano(risultato.effettivi) +
-    calcolaModDifesa(risultato.effettivi) +
-    calcolaModCentrocampo(risultato.effettivi) +
-    calcolaBonusModulo(
-      risultato.moduloFinale,
-      BonusModuloGironi
-    )
+  const bonusCapitano = calcolaVotoCapitano(risultato.effettivi);
+  const modificatoreDifesa = calcolaModDifesa(risultato.effettivi);
+  const modificatoreCentrocampo = calcolaModCentrocampo(risultato.effettivi);
+  const bonusModulo = calcolaBonusModulo(
+    risultato.moduloFinale,
+    BonusModuloGironi
   );
+
+  const modificatoreAttacco = 0;
+  const golDecisivo = 0;
+  const penalitaCapitano = 0;
+  const moltiplicatore = 1;
+
+  const totalePrimaMoltiplicatore =
+    risultato.totaleGiocatori +
+    bonusCapitano +
+    modificatoreDifesa +
+    modificatoreCentrocampo +
+    modificatoreAttacco +
+    bonusModulo +
+    golDecisivo +
+    penalitaCapitano;
+
+  const totaleFinale = totalePrimaMoltiplicatore * moltiplicatore;
+
+  return {
+    risultato,
+    totaleGiocatori: risultato.totaleGiocatori,
+    bonusCapitano,
+    modificatoreDifesa,
+    modificatoreCentrocampo,
+    modificatoreAttacco,
+    bonusModulo,
+    golDecisivo,
+    penalitaCapitano,
+    moltiplicatore,
+    totalePrimaMoltiplicatore,
+    totaleFinale,
+  };
+}
+
+export function calcolaTotaleFormazione(rows: any[]) {
+  return calcolaDettaglioFormazione(rows).totaleFinale;
 }

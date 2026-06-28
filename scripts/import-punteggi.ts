@@ -61,9 +61,11 @@ function normalizeRole(value: unknown): string {
 async function main() {
   const filePath = process.argv[2];
 
-  if (!filePath) {
-    throw new Error("Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx");
-  }
+if (!filePath) {
+  throw new Error(
+    "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx"
+  );
+}
 
   const { giornata, blocco } = parseFileName(filePath);
 
