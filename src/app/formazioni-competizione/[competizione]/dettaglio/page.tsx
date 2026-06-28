@@ -1,0 +1,304 @@
+import { supabase } from "../../../../lib/supabase";
+
+import {
+  calcolaDettaglioFormazione,
+  votoDaUsare,
+} from "../../../../lib/fantagoat";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function FormazioneCompetizioneDettaglioPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ competizione: string }>;
+  searchParams: Promise<{ partecipante?: string }>;
+}) {
+  const { competizione } = await params;
+  const { partecipante } = await searchParams;
+
+  const competizioneNorm = competizione.toUpperCase();
+  const partecipanteNorm = partecipante?.trim().toLowerCase();
+
+  if (!partecipanteNorm) {
+    return (
+      <main className="min-h-screen p-4 bg-slate-100">
+        <a href="/" className="text-blue-600 text-sm">← Home</a>
+        <div className="mt-6 rounded-xl bg-white p-4 shadow-sm text-red-600">
+          Partecipante mancante nella URL.
+        </div>
+      </main>
+    );
+  }
+
+  const { data: competizioneData } = await supabase
+    .from("competizioni")
+    .select("*")
+    .eq("codice", competizioneNorm)
+    .single();
+
+  const competizioneConclusa = competizioneData?.conclusa ?? false;
+
+  const { data, error } = await supabase
+    .from("v_formazioni_competizione_live")
+    .select("*")
+    .eq("competizione_codice", competizioneNorm)
+    .eq("partecipante_slug", partecipanteNorm)
+    .order("tipo")
+    .order("ordine");
+
+  const nomePartecipante = data?.[0]?.partecipante ?? partecipanteNorm;
+  const nomeCompetizione = data?.[0]?.competizione_nome ?? competizioneNorm;
+
+  const panchina = data?.filter((g) => g.tipo === "Panchina") ?? [];
+
+  const dettaglio = calcolaDettaglioFormazione(data ?? []);
+  const risultato = dettaglio.risultato;
+  const totaleFinale = dettaglio.totaleFinale;
+
+  return (
+    <main className="min-h-screen p-4 bg-slate-100">
+      <div className="flex gap-4">
+        <a href="/" className="text-blue-600 text-sm">
+          ← Home
+        </a>
+
+        <a
+          href={`/formazioni-competizione/${competizioneNorm}?partecipante=${encodeURIComponent(
+            partecipanteNorm
+          )}`}
+          className="text-blue-600 text-sm"
+        >
+          ← Torna alla formazione
+        </a>
+      </div>
+
+      <header className="mt-5 mb-6">
+        <h1 className="text-4xl font-bold">{nomePartecipante}</h1>
+
+        <div
+          className={`inline-block rounded-full px-3 py-1 text-sm font-semibold mt-3 mb-4 ${
+            competizioneConclusa
+              ? "bg-green-100 text-green-700"
+              : "bg-yellow-100 text-yellow-700"
+          }`}
+        >
+          {competizioneConclusa ? "Competizione conclusa" : "Competizione in corso"}
+        </div>
+
+        <div className="text-slate-600 mt-1">
+          Formazione {nomeCompetizione}
+        </div>
+
+        <div className="text-slate-500 text-sm mt-1">
+          Modulo dichiarato: {data?.[0]?.modulo_dichiarato}
+        </div>
+
+        <div className="text-slate-500 text-sm">
+          Modulo finale:{" "}
+          <span className="font-bold">{risultato.moduloFinale}</span>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-4 mt-4">
+          <h2 className="font-bold text-lg mb-4">Riepilogo punteggio</h2>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Fantapunti giocatori</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.totaleGiocatori}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Bonus/Malus capitano</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.bonusCapitano >= 0 ? "+" : ""}
+                {dettaglio.bonusCapitano}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Modificatore difesa</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.modificatoreDifesa >= 0 ? "+" : ""}
+                {dettaglio.modificatoreDifesa}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Modificatore centrocampo</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.modificatoreCentrocampo >= 0 ? "+" : ""}
+                {dettaglio.modificatoreCentrocampo}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Bonus/Malus modulo</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.bonusModulo >= 0 ? "+" : ""}
+                {dettaglio.bonusModulo}
+              </span>
+            </div>
+
+            <hr className="my-3" />
+
+            <div className="flex justify-between text-2xl font-black">
+              <span>Totale</span>
+              <span className="tabular-nums">{totaleFinale}</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {error && (
+        <pre className="text-red-600">
+          {JSON.stringify(error, null, 2)}
+        </pre>
+      )}
+
+      <section className="mb-6">
+        <h2 className="text-xl font-bold mb-3">Formazione titolare</h2>
+
+        <div className="grid gap-2">
+          {risultato.effettivi.map((g, index) => (
+            <div
+              key={`${g.giocatore_id}-${g.stato}-${index}`}
+              className={`bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-between ${
+                g.stato === "entrato"
+                  ? "border-2 border-green-300"
+                  : g.stato === "ufficio"
+                    ? "border-2 border-red-300"
+                    : ""
+              }`}
+            >
+              <div>
+                <div className="font-semibold">{g.giocatore}</div>
+
+                <div className="text-sm text-slate-500">
+                  {g.ruolo} - {g.nazionale}
+
+                  {g.avversario && (
+                    <span className="ml-2 text-slate-400">
+                      vs. {g.avversario}
+                    </span>
+                  )}
+
+                  {g.is_capitano && (
+                    <span className="ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
+                      Capitano
+                    </span>
+                  )}
+
+                  {g.is_vice && (
+                    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                      Vice
+                    </span>
+                  )}
+                </div>
+
+                {g.stato === "entrato" && (
+                  <div className="text-xs font-bold text-green-700 mt-1">
+                    ENTRATO PER {g.sostituisce}
+                  </div>
+                )}
+              </div>
+
+              <div className="text-right">
+                <div className="text-xl font-bold tabular-nums">
+                  {g.fantapunti_calcolo}
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  voto {votoDaUsare(g)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <h2 className="text-xl font-bold mb-3">Sostituzioni</h2>
+
+        <div className="grid gap-2">
+          {risultato.sostituzioni.length === 0 && (
+            <div className="bg-white rounded-xl px-4 py-3 shadow-sm text-slate-500">
+              Nessuna sostituzione
+            </div>
+          )}
+
+          {risultato.sostituzioni.map((s, index) => (
+            <div key={index} className="bg-white rounded-xl px-4 py-3 shadow-sm">
+              {s.tipo === "sostituzione" ? (
+                <>
+                  <div className="font-semibold">
+                    {s.out.giocatore} → {s.in.giocatore}
+                  </div>
+
+                  <div className="text-sm text-slate-500">
+                    {s.out.ruolo} esce, entra {s.in.ruolo}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="font-semibold">{s.out.giocatore}</div>
+
+                  <div className="text-sm text-red-600 font-bold">
+                    Nessun sostituto valido
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-bold mb-3">Panchina</h2>
+
+        <p className="text-sm text-slate-500 mt-1 mb-3">
+          L&apos;ordine della panchina determina la priorità delle sostituzioni,
+          purché sia possibile schierare un modulo consentito.
+        </p>
+
+        <div className="grid gap-2">
+          {panchina.map((g, index) => (
+            <div
+              key={`${g.giocatore_id}-${index}`}
+              className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-between"
+            >
+              <div>
+                <div className="font-semibold">
+                  {g.ordine}. {g.giocatore}
+                </div>
+
+                <div className="text-sm text-slate-500">
+                  {g.ruolo} - {g.nazionale}
+
+                  {g.avversario && (
+                    <span className="ml-2 text-slate-400">
+                      vs. {g.avversario}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-xl font-bold tabular-nums">
+                  {g.fantapunti}
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  voto {votoDaUsare(g)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
