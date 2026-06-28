@@ -29,9 +29,15 @@ export default function GiocatoreRow({
           </span>
         </div>
 
-        <p className="mt-0.5 text-xs text-slate-400">
-          {giocatore.nazionale} · Q{prezzoGiocatore(giocatore)}
-        </p>
+        <div className="mt-1 flex items-center gap-2 text-xs">
+  <span className="text-slate-400">
+    {giocatore.nazionale}
+  </span>
+
+  <span className="font-bold text-white tabular-nums">
+    {prezzoGiocatore(giocatore)}
+  </span>
+</div>
 
         {blocco && !inRosa && (
           <p className="mt-0.5 text-xs font-bold text-red-300">{blocco}</p>

@@ -47,9 +47,9 @@ export default function RosaPanel({
             >
               <span className="font-black text-amber-300">{g.ruolo}</span>
               <span className="truncate font-bold text-white">{g.nome}</span>
-              <span className="text-right text-slate-300">
-                Q{prezzoGiocatore(g)}
-              </span>
+              <span className="font-bold text-white tabular-nums">
+  {prezzoGiocatore(g)}
+</span>
 
               <button
                 onClick={() => rimuoviGiocatore(g.id)}
