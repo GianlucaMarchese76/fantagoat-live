@@ -60,7 +60,7 @@ export default async function Home() {
   >();
 
   for (const p of partite ?? []) {
-    const key = `${p.giornata}-${p.blocco}`;
+    const key = chiaveCalendario(p.giornata, p.blocco);
     const kickoff = new Date(p.kickoff);
 
     if (!blocchi.has(key) || kickoff < blocchi.get(key)!.primaPartita) {
@@ -77,47 +77,44 @@ export default async function Home() {
     .filter((b) => now < b.deadline)
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
-    const codiceCompetizioneHome = prossimaDeadline
-  ? CODICE_COMPETIZIONE_BY_CALENDARIO[
-      chiaveCalendario(
-        prossimaDeadline.giornata,
-        prossimaDeadline.blocco
-      )
-    ]
-  : null;
+  const codiceCompetizioneHome = prossimaDeadline
+    ? CODICE_COMPETIZIONE_BY_CALENDARIO[
+        chiaveCalendario(prossimaDeadline.giornata, prossimaDeadline.blocco)
+      ]
+    : null;
 
-const { data: competizioneAttiva } = codiceCompetizioneHome
-  ? await supabase
-      .from("competizioni")
-      .select("*")
-      .eq("codice", codiceCompetizioneHome)
-      .maybeSingle()
-  : { data: null };
+  const { data: competizioneAttiva } = codiceCompetizioneHome
+    ? await supabase
+        .from("competizioni")
+        .select("*")
+        .eq("codice", codiceCompetizioneHome)
+        .maybeSingle()
+    : { data: null };
 
-let hrefSchiera = "/login";
-let testoSchiera = "Accedi per schierare";
+  let hrefSchiera = "/login";
+  let testoSchiera = "Accedi per schierare";
 
-if (partecipanteLoggato && competizioneAttiva) {
-  const { data: rosaCompetizione } = await supabase
-    .from("rose_competizione")
-    .select("giocatore_id")
-    .eq("competizione_id", competizioneAttiva.id)
-    .eq("partecipante_id", partecipanteLoggato.id);
+  if (partecipanteLoggato && competizioneAttiva) {
+    const { data: rosaCompetizione } = await supabase
+      .from("rose_competizione")
+      .select("giocatore_id")
+      .eq("competizione_id", competizioneAttiva.id)
+      .eq("partecipante_id", partecipanteLoggato.id);
 
-  const rosaCompleta = (rosaCompetizione ?? []).length === 16;
+    const rosaCompleta = (rosaCompetizione ?? []).length === 16;
 
-  hrefSchiera = rosaCompleta
-    ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
-        partecipanteLoggato.slug
-      )}`
-    : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
-        partecipanteLoggato.slug
-      )}`;
+    hrefSchiera = rosaCompleta
+      ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+          partecipanteLoggato.slug
+        )}`
+      : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+          partecipanteLoggato.slug
+        )}`;
 
-  testoSchiera = rosaCompleta
-    ? "Vai alla tua formazione"
-    : "Crea prima la tua rosa";
-}
+    testoSchiera = rosaCompleta
+      ? "Vai alla tua formazione"
+      : "Crea prima la tua rosa";
+  }
 
   const competizioniChiuse = competizioni?.filter((c) => c.conclusa) ?? [];
 
@@ -135,81 +132,75 @@ if (partecipanteLoggato && competizioneAttiva) {
     return c && statoCompetizione(c.conclusa, b.primaPartita, now) === "LIVE";
   });
 
-  let classificaLive: Awaited<
-  ReturnType<typeof getClassificaCompetizione>
-> = [];
+  let classificaLive: Awaited<ReturnType<typeof getClassificaCompetizione>> =
+    [];
 
-if (competizioneLive?.giornata === "Sedicesimi") {
-  const alta = await getClassificaCompetizione(
-    supabase,
-    "Sedicesimi",
-    "1-8",
-    false
-  );
+  if (competizioneLive?.giornata === "Sedicesimi") {
+    const alta = await getClassificaCompetizione(
+      supabase,
+      "Sedicesimi",
+      "1-8",
+      false
+    );
 
-  const bassa = await getClassificaCompetizione(
-    supabase,
-    "Sedicesimi",
-    "9-16",
-    false
-  );
+    const bassa = await getClassificaCompetizione(
+      supabase,
+      "Sedicesimi",
+      "9-16",
+      false
+    );
 
-  const map = new Map<
-    string,
-    { partecipante: string; punti: number }
-  >();
+    const map = new Map<string, { partecipante: string; punti: number }>();
 
-  for (const r of alta) {
-    map.set(r.partecipante, {
-      partecipante: r.partecipante,
-      punti: r.punti,
-    });
-  }
-
-  for (const r of bassa) {
-    const old = map.get(r.partecipante);
-
-    if (old) {
-      old.punti += r.punti;
-    } else {
+    for (const r of alta) {
       map.set(r.partecipante, {
         partecipante: r.partecipante,
         punti: r.punti,
       });
     }
+
+    for (const r of bassa) {
+      const old = map.get(r.partecipante);
+
+      if (old) {
+        old.punti += r.punti;
+      } else {
+        map.set(r.partecipante, {
+          partecipante: r.partecipante,
+          punti: r.punti,
+        });
+      }
+    }
+
+    classificaLive = Array.from(map.values())
+      .sort((a, b) => b.punti - a.punti)
+      .map((r, i) => ({
+        posizione: i + 1,
+        partecipante: r.partecipante,
+        punti: r.punti,
+      }));
+  } else if (competizioneLive) {
+    classificaLive = await getClassificaCompetizione(
+      supabase,
+      competizioneLive.giornata,
+      competizioneLive.blocco,
+      false
+    );
   }
 
-  classificaLive = Array.from(map.values())
-    .sort((a, b) => b.punti - a.punti)
-    .map((r, i) => ({
-      posizione: i + 1,
-      partecipante: r.partecipante,
-      punti: r.punti,
-    }));
-} else if (competizioneLive) {
-  classificaLive = await getClassificaCompetizione(
-    supabase,
-    competizioneLive.giornata,
-    competizioneLive.blocco,
-    false
-  );
-}
-
   const partiteLiveFase = competizioneLive
-  ? (partite ?? []).filter((p) => p.giornata === competizioneLive.giornata)
-  : [];
+    ? (partite ?? []).filter((p) => p.giornata === competizioneLive.giornata)
+    : [];
 
-const partiteTotaliLive = new Set(
-  partiteLiveFase.map((p) => p.partita)
-).size;
+  const partiteTotaliLive = new Set(partiteLiveFase.map((p) => p.partita)).size;
 
-const partiteGiocateLive = new Set(
-  partiteLiveFase
-    .filter((p) => p.fine_partita && new Date(p.fine_partita) <= now)
-    .map((p) => p.partita)
-).size;
+  const partiteGiocateLive = new Set(
+    partiteLiveFase
+      .filter((p) => p.fine_partita && new Date(p.fine_partita) <= now)
+      .map((p) => p.partita)
+  ).size;
 
-const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
+  const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
 
   return (
     <main className="min-h-screen bg-slate-100 p-4">
@@ -228,7 +219,6 @@ const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
             <h1 className="text-3xl font-black md:text-5xl">
               FantaGOAT Live
             </h1>
-
             <p className="text-slate-600">Fantacalcio Live 2026</p>
           </div>
         </div>
@@ -270,21 +260,20 @@ const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
               </div>
 
               <div className="mt-1 font-bold">
-  {prossimaDeadline.giornata} {prossimaDeadline.blocco}
-</div>
+                {prossimaDeadline.giornata} {prossimaDeadline.blocco}
+              </div>
 
-             <div className="text-sm text-blue-100">
-  {prossimaDeadline.deadline.toLocaleString("it-IT", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "Europe/Rome",
-  })}
-</div>
+              <div className="text-sm text-blue-100">
+                {prossimaDeadline.deadline.toLocaleString("it-IT", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                  timeZone: "Europe/Rome",
+                })}
+              </div>
             </div>
           )}
 
           <div className="font-semibold text-blue-100">{testoSchiera}</div>
-
         </a>
       </section>
 
@@ -339,21 +328,21 @@ const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
 
           <section className="rounded-2xl bg-white p-4 shadow">
             <h3 className="mb-2 text-xl font-bold">
-  {competizioneLive?.giornata
-    ? `Classifica Live ${competizioneLive.giornata}`
-    : "Classifica Live"}
-</h3>
+              {competizioneLive?.giornata
+                ? `Classifica Live ${competizioneLive.giornata}`
+                : "Classifica Live"}
+            </h3>
 
             {competizioneLive ? (
               <>
                 <div className="text-slate-600">
-  {competizioneLive.giornata === "Sedicesimi"
-    ? "Sedicesimi 1-16"
-    : labelCompetizione(
-        competizioneLive.giornata,
-        competizioneLive.blocco
-      )}
-</div>
+                  {competizioneLive.giornata === "Sedicesimi"
+                    ? "Sedicesimi 1-16"
+                    : labelCompetizione(
+                        competizioneLive.giornata,
+                        competizioneLive.blocco
+                      )}
+                </div>
 
                 <div className="mb-3 text-xs text-slate-500">
                   Aggiornata a {partiteGiocateLive} partite su{" "}
@@ -365,47 +354,53 @@ const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
 
                 <div className="grid gap-2">
                   {classificaLive.slice(0, 4).map((r) => (
-                    <Link
+                    <div
                       key={r.partecipante}
-                      href={`/formazioni/${r.partecipante}/${competizioneLive.giornata}/${competizioneLive.blocco}`}
-                      className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
+                      className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
                     >
                       <div>
-  <div className="font-semibold">
-    {r.posizione}. {r.partecipante}
-  </div>
+                        <div className="font-semibold">
+                          {r.posizione}. {r.partecipante}
+                        </div>
 
-  {competizioneLive?.giornata === "Sedicesimi" ? (
-    <div className="mt-1 flex gap-2">
-      <Link
-        href={`/formazioni/${encodeURIComponent(
-          r.partecipante
-        )}/Sedicesimi/1-8`}
-        className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700"
-      >
-        1-8
-      </Link>
+                        {competizioneLive.giornata === "Sedicesimi" ? (
+                          <div className="mt-1 flex gap-2">
+                            <Link
+  href={`/formazioni-competizione/16ALTA/dettaglio?partecipante=${encodeURIComponent(
+    r.partecipante
+  )}`}
+  className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700"
+>
+  1-8
+</Link>
 
-      <Link
-        href={`/formazioni/${encodeURIComponent(
-          r.partecipante
-        )}/Sedicesimi/9-16`}
-        className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
-      >
-        9-16
-      </Link>
-    </div>
-  ) : (
-    <div className="text-xs text-blue-600">
-      Vedi formazione →
-    </div>
-  )}
-</div>
+                            <Link
+  href={`/formazioni-competizione/16BASSA/dettaglio?partecipante=${encodeURIComponent(
+    r.partecipante
+  )}`}
+  className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
+>
+  9-16
+</Link>
+                          </div>
+                        ) : (
+                          <Link
+                            href={`/formazioni/${encodeURIComponent(
+                              r.partecipante
+                            )}/${competizioneLive.giornata}/${
+                              competizioneLive.blocco
+                            }`}
+                            className="text-xs text-blue-600"
+                          >
+                            Vedi formazione →
+                          </Link>
+                        )}
+                      </div>
 
                       <div className="text-xl font-bold tabular-nums">
                         {r.punti}
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
 
@@ -421,7 +416,6 @@ const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
                 Nessuna giornata live in corso.
               </div>
             )}
-
           </section>
         </div>
       </section>
@@ -449,37 +443,38 @@ const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
       </section>
 
       <section className="mt-8">
-  <h2 className="mb-3 text-sm font-bold text-slate-500">
-    REGOLAMENTO UFFICIALE
-  </h2>
+        <h2 className="mb-3 text-sm font-bold text-slate-500">
+          REGOLAMENTO UFFICIALE
+        </h2>
 
-  <a
-    href="/regolamento/Regolamento_Ufficiale_FantaGOAT_2026.pdf"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="block rounded-2xl bg-white p-5 shadow transition hover:shadow-lg"
-  >
-    <div className="mb-2 text-2xl font-bold">
-      📘 Regolamento FantaGOAT 2026
-    </div>
+        <a
+          href="/regolamento/Regolamento_Ufficiale_FantaGOAT_2026.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block rounded-2xl bg-white p-5 shadow transition hover:shadow-lg"
+        >
+          <div className="mb-2 text-2xl font-bold">
+            📘 Regolamento FantaGOAT 2026
+          </div>
 
-    <div className="mb-4 text-slate-600">
-      Documento ufficiale della Fase a Eliminazione Diretta contenente tutte
-      le regole relative alla costruzione delle rose, alle formazioni, al
-      sistema di punteggio e allo svolgimento della competizione.
-    </div>
+          <div className="mb-4 text-slate-600">
+            Documento ufficiale della Fase a Eliminazione Diretta contenente
+            tutte le regole relative alla costruzione delle rose, alle
+            formazioni, al sistema di punteggio e allo svolgimento della
+            competizione.
+          </div>
 
-    <div className="flex items-center justify-between">
-      <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">
-        Versione 1.0
-      </span>
+          <div className="flex items-center justify-between">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">
+              Versione 1.0
+            </span>
 
-      <span className="text-sm font-semibold text-blue-600">
-        Apri PDF →
-      </span>
-    </div>
-  </a>
-</section>
+            <span className="text-sm font-semibold text-blue-600">
+              Apri PDF →
+            </span>
+          </div>
+        </a>
+      </section>
     </main>
   );
 }

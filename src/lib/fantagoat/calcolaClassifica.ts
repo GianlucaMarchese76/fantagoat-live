@@ -18,6 +18,8 @@ export function calcolaClassifica({
   const gruppi = new Map<string, any[]>();
 
   for (const row of rows ?? []) {
+    if (!row.partecipante) continue;
+
     if (!gruppi.has(row.partecipante)) {
       gruppi.set(row.partecipante, []);
     }
@@ -29,8 +31,14 @@ export function calcolaClassifica({
     .map(([partecipante, formazione]) => {
       const rowsCalcolo = formazione.map((r) => ({
         ...r,
-        voto: definitiva ? r.voto : r.voto_live,
-        fantapunti: definitiva ? r.fantapunti : r.fantapunti_live,
+
+        voto: definitiva
+          ? r.voto
+          : r.voto_live ?? r.voto,
+
+        fantapunti: definitiva
+          ? r.fantapunti
+          : r.fantapunti_live ?? r.fantapunti,
       }));
 
       return {
@@ -39,6 +47,7 @@ export function calcolaClassifica({
         posizione: 0,
       };
     })
+    .filter((r) => Number.isFinite(r.punti))
     .sort((a, b) => b.punti - a.punti)
     .map((r, index) => ({
       ...r,

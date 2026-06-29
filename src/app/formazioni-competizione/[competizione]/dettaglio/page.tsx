@@ -1,6 +1,5 @@
 import { supabase } from "../../../../lib/supabase";
 import { competizioniDesignanti } from "../../../../lib/fantagoat/continuitaCapitano";
-
 import {
   calcolaDettaglioFormazione,
   votoDaUsare,
@@ -20,13 +19,16 @@ export default async function FormazioneCompetizioneDettaglioPage({
   const { partecipante } = await searchParams;
 
   const competizioneNorm = competizione.toUpperCase();
-  const partecipanteNorm = partecipante?.trim().toLowerCase();
+  const partecipanteNorm = partecipante
+  ?.trim()
+  .toLowerCase()
+  .replaceAll(" ", "");
 
   if (!partecipanteNorm) {
     return (
-      <main className="min-h-screen p-4 bg-slate-100">
-        <a href="/" className="text-blue-600 text-sm">← Home</a>
-        <div className="mt-6 rounded-xl bg-white p-4 shadow-sm text-red-600">
+      <main className="min-h-screen bg-slate-100 p-4">
+        <a href="/" className="text-sm text-blue-600">← Home</a>
+        <div className="mt-6 rounded-xl bg-white p-4 text-red-600 shadow-sm">
           Partecipante mancante nella URL.
         </div>
       </main>
@@ -37,7 +39,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
     .from("competizioni")
     .select("*")
     .eq("codice", competizioneNorm)
-    .single();
+    .maybeSingle();
 
   const competizioneConclusa = competizioneData?.conclusa ?? false;
 
@@ -48,6 +50,14 @@ export default async function FormazioneCompetizioneDettaglioPage({
     .eq("partecipante_slug", partecipanteNorm)
     .order("tipo")
     .order("ordine");
+
+  console.log("DEBUG DETTAGLIO", {
+    competizioneNorm,
+    partecipanteNorm,
+    righe: data?.length ?? 0,
+    tipi: [...new Set((data ?? []).map((r) => r.tipo))],
+    error,
+  });
 
   const nomePartecipante = data?.[0]?.partecipante ?? partecipanteNorm;
   const nomeCompetizione = data?.[0]?.competizione_nome ?? competizioneNorm;
@@ -82,7 +92,8 @@ export default async function FormazioneCompetizioneDettaglioPage({
     };
   }
 
-  const panchina = data?.filter((g) => g.tipo === "Panchina") ?? [];
+  const panchina =
+    data?.filter((g) => String(g.tipo).toLowerCase() === "panchina") ?? [];
 
   const dettaglio = calcolaDettaglioFormazione(
     data ?? [],
@@ -93,9 +104,9 @@ export default async function FormazioneCompetizioneDettaglioPage({
   const totaleFinale = dettaglio.totaleFinale;
 
   return (
-    <main className="min-h-screen p-4 bg-slate-100">
+    <main className="min-h-screen bg-slate-100 p-4">
       <div className="flex gap-4">
-        <a href="/" className="text-blue-600 text-sm">
+        <a href="/" className="text-sm text-blue-600">
           ← Home
         </a>
 
@@ -103,7 +114,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
           href={`/formazioni-competizione/${competizioneNorm}?partecipante=${encodeURIComponent(
             partecipanteNorm
           )}`}
-          className="text-blue-600 text-sm"
+          className="text-sm text-blue-600"
         >
           ← Torna alla formazione
         </a>
@@ -113,7 +124,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
         <h1 className="text-4xl font-bold">{nomePartecipante}</h1>
 
         <div
-          className={`inline-block rounded-full px-3 py-1 text-sm font-semibold mt-3 mb-4 ${
+          className={`mt-3 mb-4 inline-block rounded-full px-3 py-1 text-sm font-semibold ${
             competizioneConclusa
               ? "bg-green-100 text-green-700"
               : "bg-yellow-100 text-yellow-700"
@@ -124,15 +135,15 @@ export default async function FormazioneCompetizioneDettaglioPage({
             : "Competizione in corso"}
         </div>
 
-        <div className="text-slate-600 mt-1">
+        <div className="mt-1 text-slate-600">
           Formazione {nomeCompetizione}
         </div>
 
-        <div className="text-slate-500 text-sm mt-1">
-          Modulo dichiarato: {data?.[0]?.modulo_dichiarato}
+        <div className="mt-1 text-sm text-slate-500">
+          Modulo dichiarato: {data?.[0]?.modulo_dichiarato ?? "—"}
         </div>
 
-        <div className="text-slate-500 text-sm">
+        <div className="text-sm text-slate-500">
           Modulo finale:{" "}
           <span className="font-bold">{risultato.moduloFinale}</span>
         </div>
@@ -140,14 +151,12 @@ export default async function FormazioneCompetizioneDettaglioPage({
         {continuitaCapitano && (
           <div className="mt-4 rounded-xl bg-yellow-50 p-3 text-sm text-yellow-800">
             Continuità capitano attiva. Penalità applicata:{" "}
-            <span className="font-bold">
-              {dettaglio.penalitaCapitano}
-            </span>
+            <span className="font-bold">{dettaglio.penalitaCapitano}</span>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-sm p-4 mt-4">
-          <h2 className="font-bold text-lg mb-4">Riepilogo punteggio</h2>
+        <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="mb-4 text-lg font-bold">Riepilogo punteggio</h2>
 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -235,13 +244,13 @@ export default async function FormazioneCompetizioneDettaglioPage({
       )}
 
       <section className="mb-6">
-        <h2 className="text-xl font-bold mb-3">Formazione titolare</h2>
+        <h2 className="mb-3 text-xl font-bold">Formazione titolare</h2>
 
         <div className="grid gap-2">
           {risultato.effettivi.map((g, index) => (
             <div
               key={`${g.giocatore_id}-${g.stato}-${index}`}
-              className={`bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-between ${
+              className={`flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ${
                 g.stato === "entrato"
                   ? "border-2 border-green-300"
                   : g.stato === "ufficio"
@@ -275,7 +284,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
                 </div>
 
                 {g.stato === "entrato" && (
-                  <div className="text-xs font-bold text-green-700 mt-1">
+                  <div className="mt-1 text-xs font-bold text-green-700">
                     ENTRATO PER {g.sostituisce}
                   </div>
                 )}
@@ -283,11 +292,13 @@ export default async function FormazioneCompetizioneDettaglioPage({
 
               <div className="text-right">
                 <div className="text-xl font-bold tabular-nums">
-                  {g.fantapunti_calcolo}
+                  {g.stato_giocatore === "da_giocare"
+                    ? "—"
+                    : g.fantapunti_calcolo}
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  voto {votoDaUsare(g)}
+                  voto {g.stato_giocatore === "da_giocare" ? "—" : votoDaUsare(g)}
                 </div>
               </div>
             </div>
@@ -296,17 +307,17 @@ export default async function FormazioneCompetizioneDettaglioPage({
       </section>
 
       <section className="mb-6">
-        <h2 className="text-xl font-bold mb-3">Sostituzioni</h2>
+        <h2 className="mb-3 text-xl font-bold">Sostituzioni</h2>
 
         <div className="grid gap-2">
           {risultato.sostituzioni.length === 0 && (
-            <div className="bg-white rounded-xl px-4 py-3 shadow-sm text-slate-500">
+            <div className="rounded-xl bg-white px-4 py-3 text-slate-500 shadow-sm">
               Nessuna sostituzione
             </div>
           )}
 
           {risultato.sostituzioni.map((s, index) => (
-            <div key={index} className="bg-white rounded-xl px-4 py-3 shadow-sm">
+            <div key={index} className="rounded-xl bg-white px-4 py-3 shadow-sm">
               {s.tipo === "sostituzione" ? (
                 <>
                   <div className="font-semibold">
@@ -321,7 +332,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
                 <>
                   <div className="font-semibold">{s.out.giocatore}</div>
 
-                  <div className="text-sm text-red-600 font-bold">
+                  <div className="text-sm font-bold text-red-600">
                     Nessun sostituto valido
                   </div>
                 </>
@@ -332,9 +343,9 @@ export default async function FormazioneCompetizioneDettaglioPage({
       </section>
 
       <section>
-        <h2 className="text-xl font-bold mb-3">Panchina</h2>
+        <h2 className="mb-3 text-xl font-bold">Panchina</h2>
 
-        <p className="text-sm text-slate-500 mt-1 mb-3">
+        <p className="mt-1 mb-3 text-sm text-slate-500">
           L&apos;ordine della panchina determina la priorità delle sostituzioni,
           purché sia possibile schierare un modulo consentito.
         </p>
@@ -343,7 +354,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
           {panchina.map((g, index) => (
             <div
               key={`${g.giocatore_id}-${index}`}
-              className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-between"
+              className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm"
             >
               <div>
                 <div className="font-semibold">
@@ -363,11 +374,11 @@ export default async function FormazioneCompetizioneDettaglioPage({
 
               <div className="text-right">
                 <div className="text-xl font-bold tabular-nums">
-                  {g.fantapunti}
+                  {g.stato_giocatore === "da_giocare" ? "—" : g.fantapunti}
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  voto {votoDaUsare(g)}
+                  voto {g.stato_giocatore === "da_giocare" ? "—" : votoDaUsare(g)}
                 </div>
               </div>
             </div>

@@ -25,6 +25,7 @@ type Props = {
   capitanoIniziale: string | null;
   viceIniziale: string | null;
   moduloIniziale: string;
+  formazioneBloccata: boolean;
 };
 
 const MODULI: Record<string, { label: string; ruoli: string[] }> = {
@@ -105,6 +106,7 @@ export default function FormazioneClient({
   capitanoIniziale,
   viceIniziale,
   moduloIniziale,
+  formazioneBloccata,
 }: Props) {
   const moduloKeyIniziale = normalizzaModulo(moduloIniziale);
 
@@ -216,6 +218,10 @@ export default function FormazioneClient({
   }
 
   async function handleSalvaFormazione() {
+    if (formazioneBloccata) {
+  setMessaggio("La formazione è bloccata perché la competizione è iniziata.");
+  return;
+}
     if (titolari.filter(Boolean).length !== 11) {
       setMessaggio("Formazione non valida: devi selezionare 11 titolari.");
       return;
@@ -589,10 +595,18 @@ export default function FormazioneClient({
   <button
     type="button"
     onClick={handleSalvaFormazione}
-    disabled={salvataggio || !formazioneCompleta}
+    disabled={
+  salvataggio ||
+  !formazioneCompleta ||
+  formazioneBloccata
+}
     className="w-full rounded-2xl bg-emerald-600 py-3 text-base font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
   >
-    {salvataggio ? "Salvataggio..." : "✓ Salva formazione"}
+    {formazioneBloccata
+  ? "🔒 Formazione bloccata"
+  : salvataggio
+    ? "Salvataggio..."
+    : "✓ Salva formazione"}
   </button>
 
   {messaggio && (

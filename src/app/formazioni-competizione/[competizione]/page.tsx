@@ -75,6 +75,23 @@ const { data: competizionePartite } = await supabase
 
 const partiteIds = (competizionePartite ?? []).map((p) => p.partita);
 
+const { data: primaPartita } = await supabase
+  .from("calendario_partite")
+  .select("kickoff")
+  .eq("giornata", competizioneData.giornata)
+  .eq("blocco", competizioneData.blocco)
+  .order("kickoff", { ascending: true })
+  .limit(1)
+  .maybeSingle();
+
+const now = new Date();
+
+const deadline = primaPartita?.kickoff
+  ? new Date(new Date(primaPartita.kickoff).getTime() - 5 * 60 * 1000)
+  : null;
+
+const formazioneBloccata = deadline ? now >= deadline : false;
+
 const { data: partiteRaw } =
   partiteIds.length > 0
     ? await supabase
@@ -122,12 +139,12 @@ avversaria:
 
 const titolariIniziali =
   formazioneSalvata
-    ?.filter((r) => r.tipo === "titolare")
+    ?.filter((r) => String(r.tipo).toLowerCase() === "titolare")
     .map((r) => r.giocatore_id) ?? [];
 
 const panchinaIniziale =
   formazioneSalvata
-    ?.filter((r) => r.tipo === "panchina")
+    ?.filter((r) => String(r.tipo).toLowerCase() === "panchina")
     .map((r) => r.giocatore_id) ?? [];
 
   const capitanoIniziale =
@@ -156,15 +173,16 @@ const panchinaIniziale =
     </div>
 
     <FormazioneClient
-      competizione={competizioneData}
-      partecipante={partecipanteData}
-      giocatoriRosa={giocatoriRosa}
-      titolariIniziali={titolariIniziali}
-      panchinaIniziale={panchinaIniziale}
-      capitanoIniziale={capitanoIniziale}
-      viceIniziale={viceIniziale}
-      moduloIniziale={moduloIniziale}
-    />
+  competizione={competizioneData}
+  partecipante={partecipanteData}
+  giocatoriRosa={giocatoriRosa}
+  titolariIniziali={titolariIniziali}
+  panchinaIniziale={panchinaIniziale}
+  capitanoIniziale={capitanoIniziale}
+  viceIniziale={viceIniziale}
+  moduloIniziale={moduloIniziale}
+  formazioneBloccata={false}
+/>
   </main>
 );
 }
