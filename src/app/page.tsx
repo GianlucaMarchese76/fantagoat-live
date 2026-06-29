@@ -13,13 +13,6 @@ import { COOKIE_PARTECIPANTE } from "../lib/fantagoat/sessione";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
-  "Sedicesimi|1-8": "16ALTA",
-  "Sedicesimi|9-16": "16BASSA",
-  "Ottavi|1-4": "8ALTA",
-  "Ottavi|5-8": "8BASSA",
-};
-
 function chiaveCalendario(giornata: string, blocco: string) {
   return `${giornata}|${blocco}`;
 }
@@ -77,19 +70,14 @@ export default async function Home() {
     .filter((b) => now < b.deadline)
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
-  const codiceCompetizioneHome = prossimaDeadline
-    ? CODICE_COMPETIZIONE_BY_CALENDARIO[
-        chiaveCalendario(prossimaDeadline.giornata, prossimaDeadline.blocco)
-      ]
-    : null;
-
-  const { data: competizioneAttiva } = codiceCompetizioneHome
-    ? await supabase
-        .from("competizioni")
-        .select("*")
-        .eq("codice", codiceCompetizioneHome)
-        .maybeSingle()
-    : { data: null };
+  const { data: competizioneAttiva } = prossimaDeadline
+  ? await supabase
+      .from("competizioni")
+      .select("*")
+      .eq("giornata", prossimaDeadline.giornata)
+      .eq("blocco", prossimaDeadline.blocco)
+      .maybeSingle()
+  : { data: null };
 
   let hrefSchiera = "/login";
   let testoSchiera = "Accedi per schierare";
@@ -104,12 +92,12 @@ export default async function Home() {
     const rosaCompleta = (rosaCompetizione ?? []).length === 16;
 
     hrefSchiera = rosaCompleta
-      ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
-          partecipanteLoggato.slug
-        )}`
-      : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
-          partecipanteLoggato.slug
-        )}`;
+  ? `/formazioni-competizione/${competizioneAttiva.codice}?partecipante=${encodeURIComponent(
+      partecipanteLoggato.slug
+    )}`
+  : `/crea-rosa/${competizioneAttiva.codice}?partecipante=${encodeURIComponent(
+      partecipanteLoggato.slug
+    )}`;
 
     testoSchiera = rosaCompleta
       ? "Vai alla tua formazione"

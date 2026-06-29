@@ -9,3 +9,4 @@ export * from "./statoCompetizione";
 export * from "./getClassificaCompetizione";
 export * from "./creaSlug";
 export * from "./moduli";
+export * from "./competizioni";
