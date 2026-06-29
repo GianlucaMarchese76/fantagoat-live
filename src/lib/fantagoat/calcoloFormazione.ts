@@ -176,7 +176,22 @@ export function calcolaVotoCapitano(effettivi: any[]) {
     return votoDaUsare(vice) - 6;
   }
 
-  return 0;
+  return -2;
+}
+
+export function calcolaBonusPanchina(panchina: any[], sostituzioni: any[]) {
+  const idsEntrati = new Set(
+    sostituzioni
+      .filter((s) => s.tipo === "sostituzione" && s.in)
+      .map((s) => s.in.giocatore_id)
+  );
+
+  return panchina
+    .filter((g) => !idsEntrati.has(g.giocatore_id))
+    .reduce((sum, g) => {
+      if (!haVoto(g)) return sum;
+      return sum + (votoDaUsare(g) - 6);
+    }, 0);
 }
 
 export function calcolaModDifesa(effettivi: any[]) {
@@ -219,13 +234,59 @@ export function calcolaModCentrocampo(effettivi: any[]) {
   return 0;
 }
 
-export function calcolaDettaglioFormazione(rows: any[]) {
+type ContinuitaCapitano = {
+  capitaniPrecedenti: string[];
+  vicePrecedenti: string[];
+};
+
+function calcolaPenalitaContinuitaCapitano(
+  effettivi: any[],
+  continuita?: ContinuitaCapitano
+) {
+  if (!continuita) return 0;
+
+  const capitano = effettivi.find((g) => g.is_capitano);
+  const vice = effettivi.find((g) => g.is_vice);
+
+  let capitanoEffettivoId: string | null = null;
+
+  if (capitano && haVoto(capitano)) {
+    capitanoEffettivoId = capitano.giocatore_id;
+  } else if (vice && haVoto(vice)) {
+    capitanoEffettivoId = vice.giocatore_id;
+  }
+
+  let penalitaContinuita = 0;
+
+  if (!capitanoEffettivoId) {
+    penalitaContinuita = -2;
+  } else if (continuita.capitaniPrecedenti.includes(capitanoEffettivoId)) {
+    penalitaContinuita = 0;
+  } else if (continuita.vicePrecedenti.includes(capitanoEffettivoId)) {
+    penalitaContinuita = -1;
+  } else {
+    penalitaContinuita = -2;
+  }
+
+  const penalitaAssenza = capitanoEffettivoId ? 0 : -2;
+
+  return penalitaContinuita + penalitaAssenza;
+}
+
+export function calcolaDettaglioFormazione(
+  rows: any[],
+  continuita?: ContinuitaCapitano
+) {
   const titolari = rows.filter((g) => g.tipo === "Titolare");
   const panchina = rows.filter((g) => g.tipo === "Panchina");
 
   const risultato = calcolaFormazioneEffettiva(titolari, panchina);
 
   const bonusCapitano = calcolaVotoCapitano(risultato.effettivi);
+  const bonusPanchina = calcolaBonusPanchina(
+  panchina,
+  risultato.sostituzioni
+);
   const modificatoreDifesa = calcolaModDifesa(risultato.effettivi);
   const modificatoreCentrocampo = calcolaModCentrocampo(risultato.effettivi);
   const bonusModulo = calcolaBonusModulo(
@@ -235,8 +296,11 @@ export function calcolaDettaglioFormazione(rows: any[]) {
 
   const modificatoreAttacco = 0;
   const golDecisivo = 0;
-  const penalitaCapitano = 0;
-  const moltiplicatore = 1;
+  const penalitaCapitano = calcolaPenalitaContinuitaCapitano(
+  risultato.effettivi,
+  continuita
+);
+  const moltiplicatore = numero(rows?.[0]?.moltiplicatore ?? 1);
 
   const totalePrimaMoltiplicatore =
     risultato.totaleGiocatori +
@@ -245,6 +309,7 @@ export function calcolaDettaglioFormazione(rows: any[]) {
     modificatoreCentrocampo +
     modificatoreAttacco +
     bonusModulo +
+    bonusPanchina +
     golDecisivo +
     penalitaCapitano;
 
@@ -258,6 +323,7 @@ export function calcolaDettaglioFormazione(rows: any[]) {
     modificatoreCentrocampo,
     modificatoreAttacco,
     bonusModulo,
+    bonusPanchina,
     golDecisivo,
     penalitaCapitano,
     moltiplicatore,

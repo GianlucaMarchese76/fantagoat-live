@@ -1,4 +1,5 @@
 import { supabase } from "../../../../lib/supabase";
+import { competizioniDesignanti } from "../../../../lib/fantagoat/continuitaCapitano";
 
 import {
   calcolaDettaglioFormazione,
@@ -51,9 +52,43 @@ export default async function FormazioneCompetizioneDettaglioPage({
   const nomePartecipante = data?.[0]?.partecipante ?? partecipanteNorm;
   const nomeCompetizione = data?.[0]?.competizione_nome ?? competizioneNorm;
 
+  const codiciDesignanti = competizioniDesignanti(competizioneNorm);
+
+  let continuitaCapitano:
+    | {
+        capitaniPrecedenti: string[];
+        vicePrecedenti: string[];
+      }
+    | undefined;
+
+  if (codiciDesignanti.length > 0 && data?.length) {
+    const { data: designati } = await supabase
+      .from("v_formazioni_competizione_live")
+      .select("giocatore_id,is_capitano,is_vice,competizione_codice")
+      .eq("partecipante_id", data[0].partecipante_id)
+      .in("competizione_codice", codiciDesignanti)
+      .or("is_capitano.eq.true,is_vice.eq.true");
+
+    continuitaCapitano = {
+      capitaniPrecedenti:
+        designati
+          ?.filter((g) => g.is_capitano)
+          .map((g) => g.giocatore_id) ?? [],
+
+      vicePrecedenti:
+        designati
+          ?.filter((g) => g.is_vice)
+          .map((g) => g.giocatore_id) ?? [],
+    };
+  }
+
   const panchina = data?.filter((g) => g.tipo === "Panchina") ?? [];
 
-  const dettaglio = calcolaDettaglioFormazione(data ?? []);
+  const dettaglio = calcolaDettaglioFormazione(
+    data ?? [],
+    continuitaCapitano
+  );
+
   const risultato = dettaglio.risultato;
   const totaleFinale = dettaglio.totaleFinale;
 
@@ -84,7 +119,9 @@ export default async function FormazioneCompetizioneDettaglioPage({
               : "bg-yellow-100 text-yellow-700"
           }`}
         >
-          {competizioneConclusa ? "Competizione conclusa" : "Competizione in corso"}
+          {competizioneConclusa
+            ? "Competizione conclusa"
+            : "Competizione in corso"}
         </div>
 
         <div className="text-slate-600 mt-1">
@@ -99,6 +136,15 @@ export default async function FormazioneCompetizioneDettaglioPage({
           Modulo finale:{" "}
           <span className="font-bold">{risultato.moduloFinale}</span>
         </div>
+
+        {continuitaCapitano && (
+          <div className="mt-4 rounded-xl bg-yellow-50 p-3 text-sm text-yellow-800">
+            Continuità capitano attiva. Penalità applicata:{" "}
+            <span className="font-bold">
+              {dettaglio.penalitaCapitano}
+            </span>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm p-4 mt-4">
           <h2 className="font-bold text-lg mb-4">Riepilogo punteggio</h2>
@@ -140,6 +186,35 @@ export default async function FormazioneCompetizioneDettaglioPage({
               <span className="font-semibold tabular-nums">
                 {dettaglio.bonusModulo >= 0 ? "+" : ""}
                 {dettaglio.bonusModulo}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Bonus Panchina</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.bonusPanchina >= 0 ? "+" : ""}
+                {dettaglio.bonusPanchina}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Penalità continuità capitano</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.penalitaCapitano}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Totale prima del moltiplicatore</span>
+              <span className="font-semibold tabular-nums">
+                {dettaglio.totalePrimaMoltiplicatore}
+              </span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Moltiplicatore competizione</span>
+              <span className="font-semibold tabular-nums">
+                ×{dettaglio.moltiplicatore}
               </span>
             </div>
 

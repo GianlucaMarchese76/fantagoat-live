@@ -13,8 +13,16 @@ import { COOKIE_PARTECIPANTE } from "../lib/fantagoat/sessione";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const TESTO_PROSSIMA_SCADENZA =
-  "Sedicesimi di finale Gare 9-16";
+const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
+  "Sedicesimi|1-8": "16ALTA",
+  "Sedicesimi|9-16": "16BASSA",
+  "Ottavi|1-4": "8ALTA",
+  "Ottavi|5-8": "8BASSA",
+};
+
+function chiaveCalendario(giornata: string, blocco: string) {
+  return `${giornata}|${blocco}`;
+}
 
 export default async function Home() {
   const cookieStore = await cookies();
@@ -28,42 +36,6 @@ export default async function Home() {
         .maybeSingle()
     : { data: null };
 
-    const codiceCompetizioneHome = "16BASSA";
-
-  const { data: competizioneAttiva } = await supabase
-    .from("competizioni")
-    .select("*")
-    .eq("attiva", true)
-    .eq("conclusa", false)
-    .order("ordine", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  let hrefSchiera = "/login";
-  let testoSchiera = "Accedi per schierare";
-
-  if (partecipanteLoggato && competizioneAttiva) {
-    const { data: rosaCompetizione } = await supabase
-      .from("rose_competizione")
-      .select("giocatore_id")
-      .eq("competizione_id", competizioneAttiva.id)
-      .eq("partecipante_id", partecipanteLoggato.id);
-
-    const rosaCompleta = (rosaCompetizione ?? []).length === 16;
-
-    hrefSchiera = rosaCompleta
-  ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
-      partecipanteLoggato.slug
-    )}`
-  : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
-      partecipanteLoggato.slug
-    )}`;
-
-    testoSchiera = rosaCompleta
-      ? "Vai alla tua formazione"
-      : "Crea prima la tua rosa";
-  }
-
   const { data: competizioni } = await supabase
     .from("v_competizioni_concluse")
     .select("*")
@@ -72,7 +44,7 @@ export default async function Home() {
 
   const { data: partite } = await supabase
     .from("calendario_partite")
-    .select("giornata, blocco, kickoff, fine_partita")
+    .select("giornata, blocco, partita, kickoff, fine_partita")
     .order("kickoff");
 
   const now = new Date();
@@ -105,6 +77,48 @@ export default async function Home() {
     .filter((b) => now < b.deadline)
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
+    const codiceCompetizioneHome = prossimaDeadline
+  ? CODICE_COMPETIZIONE_BY_CALENDARIO[
+      chiaveCalendario(
+        prossimaDeadline.giornata,
+        prossimaDeadline.blocco
+      )
+    ]
+  : null;
+
+const { data: competizioneAttiva } = codiceCompetizioneHome
+  ? await supabase
+      .from("competizioni")
+      .select("*")
+      .eq("codice", codiceCompetizioneHome)
+      .maybeSingle()
+  : { data: null };
+
+let hrefSchiera = "/login";
+let testoSchiera = "Accedi per schierare";
+
+if (partecipanteLoggato && competizioneAttiva) {
+  const { data: rosaCompetizione } = await supabase
+    .from("rose_competizione")
+    .select("giocatore_id")
+    .eq("competizione_id", competizioneAttiva.id)
+    .eq("partecipante_id", partecipanteLoggato.id);
+
+  const rosaCompleta = (rosaCompetizione ?? []).length === 16;
+
+  hrefSchiera = rosaCompleta
+    ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+        partecipanteLoggato.slug
+      )}`
+    : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+        partecipanteLoggato.slug
+      )}`;
+
+  testoSchiera = rosaCompleta
+    ? "Vai alla tua formazione"
+    : "Crea prima la tua rosa";
+}
+
   const competizioniChiuse = competizioni?.filter((c) => c.conclusa) ?? [];
 
   const generale = await calcolaGenerale({
@@ -121,29 +135,81 @@ export default async function Home() {
     return c && statoCompetizione(c.conclusa, b.primaPartita, now) === "LIVE";
   });
 
-  const classificaLive = competizioneLive
-    ? await getClassificaCompetizione(
-        supabase,
-        competizioneLive.giornata,
-        competizioneLive.blocco,
-        false
-      )
-    : [];
+  let classificaLive: Awaited<
+  ReturnType<typeof getClassificaCompetizione>
+> = [];
 
-  const partiteLiveBlocco = competizioneLive
-    ? (partite ?? []).filter(
-        (p) =>
-          p.giornata === competizioneLive.giornata &&
-          p.blocco === competizioneLive.blocco
-      )
-    : [];
+if (competizioneLive?.giornata === "Sedicesimi") {
+  const alta = await getClassificaCompetizione(
+    supabase,
+    "Sedicesimi",
+    "1-8",
+    false
+  );
 
-  const partiteGiocateLive = partiteLiveBlocco.filter(
-    (p) => p.fine_partita && new Date(p.fine_partita) <= now
-  ).length;
+  const bassa = await getClassificaCompetizione(
+    supabase,
+    "Sedicesimi",
+    "9-16",
+    false
+  );
 
-  const partiteTotaliLive = partiteLiveBlocco.length;
-  const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
+  const map = new Map<
+    string,
+    { partecipante: string; punti: number }
+  >();
+
+  for (const r of alta) {
+    map.set(r.partecipante, {
+      partecipante: r.partecipante,
+      punti: r.punti,
+    });
+  }
+
+  for (const r of bassa) {
+    const old = map.get(r.partecipante);
+
+    if (old) {
+      old.punti += r.punti;
+    } else {
+      map.set(r.partecipante, {
+        partecipante: r.partecipante,
+        punti: r.punti,
+      });
+    }
+  }
+
+  classificaLive = Array.from(map.values())
+    .sort((a, b) => b.punti - a.punti)
+    .map((r, i) => ({
+      posizione: i + 1,
+      partecipante: r.partecipante,
+      punti: r.punti,
+    }));
+} else if (competizioneLive) {
+  classificaLive = await getClassificaCompetizione(
+    supabase,
+    competizioneLive.giornata,
+    competizioneLive.blocco,
+    false
+  );
+}
+
+  const partiteLiveFase = competizioneLive
+  ? (partite ?? []).filter((p) => p.giornata === competizioneLive.giornata)
+  : [];
+
+const partiteTotaliLive = new Set(
+  partiteLiveFase.map((p) => p.partita)
+).size;
+
+const partiteGiocateLive = new Set(
+  partiteLiveFase
+    .filter((p) => p.fine_partita && new Date(p.fine_partita) <= now)
+    .map((p) => p.partita)
+).size;
+
+const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
 
   return (
     <main className="min-h-screen bg-slate-100 p-4">
@@ -204,11 +270,15 @@ export default async function Home() {
               </div>
 
               <div className="mt-1 font-bold">
-  {TESTO_PROSSIMA_SCADENZA}
+  {prossimaDeadline.giornata} {prossimaDeadline.blocco}
 </div>
 
-              <div className="text-sm text-blue-100">
-  29/06/26, 18:55
+             <div className="text-sm text-blue-100">
+  {prossimaDeadline.deadline.toLocaleString("it-IT", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Europe/Rome",
+  })}
 </div>
             </div>
           )}
@@ -268,23 +338,29 @@ export default async function Home() {
           </section>
 
           <section className="rounded-2xl bg-white p-4 shadow">
-            <h3 className="mb-2 text-xl font-bold">Classifica Live</h3>
+            <h3 className="mb-2 text-xl font-bold">
+  {competizioneLive?.giornata
+    ? `Classifica Live ${competizioneLive.giornata}`
+    : "Classifica Live"}
+</h3>
 
             {competizioneLive ? (
               <>
                 <div className="text-slate-600">
-                  {labelCompetizione(
-                    competizioneLive.giornata,
-                    competizioneLive.blocco
-                  )}
-                </div>
+  {competizioneLive.giornata === "Sedicesimi"
+    ? "Sedicesimi 1-16"
+    : labelCompetizione(
+        competizioneLive.giornata,
+        competizioneLive.blocco
+      )}
+</div>
 
                 <div className="mb-3 text-xs text-slate-500">
                   Aggiornata a {partiteGiocateLive} partite su{" "}
                   {partiteTotaliLive}
                   {partiteMancantiLive > 0
                     ? ` · Mancano ${partiteMancantiLive} partite`
-                    : " · Giornata completata"}
+                    : " · Fase completata"}
                 </div>
 
                 <div className="grid gap-2">
@@ -295,14 +371,36 @@ export default async function Home() {
                       className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
                     >
                       <div>
-                        <div className="font-semibold">
-                          {r.posizione}. {r.partecipante}
-                        </div>
+  <div className="font-semibold">
+    {r.posizione}. {r.partecipante}
+  </div>
 
-                        <div className="text-xs text-blue-600">
-                          Vedi formazione →
-                        </div>
-                      </div>
+  {competizioneLive?.giornata === "Sedicesimi" ? (
+    <div className="mt-1 flex gap-2">
+      <Link
+        href={`/formazioni/${encodeURIComponent(
+          r.partecipante
+        )}/Sedicesimi/1-8`}
+        className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700"
+      >
+        1-8
+      </Link>
+
+      <Link
+        href={`/formazioni/${encodeURIComponent(
+          r.partecipante
+        )}/Sedicesimi/9-16`}
+        className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
+      >
+        9-16
+      </Link>
+    </div>
+  ) : (
+    <div className="text-xs text-blue-600">
+      Vedi formazione →
+    </div>
+  )}
+</div>
 
                       <div className="text-xl font-bold tabular-nums">
                         {r.punti}
@@ -312,10 +410,10 @@ export default async function Home() {
                 </div>
 
                 <a
-                  href={`/classifiche/${competizioneLive.giornata}${competizioneLive.blocco}`}
+                  href="/classifiche"
                   className="mt-4 block text-sm font-semibold text-blue-600"
                 >
-                  → Apri classifica live
+                  → Tutte le classifiche
                 </a>
               </>
             ) : (
@@ -324,12 +422,6 @@ export default async function Home() {
               </div>
             )}
 
-            <a
-              href="/classifiche"
-              className="mt-4 block text-sm font-semibold text-blue-600"
-            >
-              → Tutte le classifiche
-            </a>
           </section>
         </div>
       </section>

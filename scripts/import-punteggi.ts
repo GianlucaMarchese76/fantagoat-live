@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-
 dotenv.config({ path: ".env.local" });
+
 import path from "node:path";
 import * as XLSX from "xlsx";
 import { createClient } from "@supabase/supabase-js";
@@ -18,14 +18,17 @@ function parseFileName(filePath: string) {
   const base = path.basename(filePath, path.extname(filePath));
   const match = base.match(/^(G\d+)([A-Z]+)$/);
 
-  if (!match) {
-    throw new Error(`Nome file non valido: ${base}. Usa formato tipo G2AF.xlsx`);
+  if (match) {
+    return { giornata: match[1], blocco: match[2] as string | null };
   }
 
-  return {
-    giornata: match[1],
-    blocco: match[2],
-  };
+  if (base.toLowerCase() === "sedicesimi") {
+    return { giornata: "Sedicesimi", blocco: null as string | null };
+  }
+
+  throw new Error(
+    `Nome file non valido: ${base}. Usa formato tipo G2AF.xlsx oppure sedicesimi.xlsx`
+  );
 }
 
 function toNumber(value: unknown): number | null {
@@ -38,9 +41,7 @@ function toNumber(value: unknown): number | null {
 }
 
 function normalizeName(value: unknown): string {
-  return String(value ?? "")
-    .trim()
-    .replace(/\s+/g, " ");
+  return String(value ?? "").trim().replace(/\s+/g, " ");
 }
 
 function normalizeRole(value: unknown): string {
@@ -50,70 +51,95 @@ function normalizeRole(value: unknown): string {
   if (role === "defender") return "D";
   if (role === "midfielder") return "C";
   if (role === "forward") return "A";
-
- if (role === "forward") return "A";
   if (role === "attacker") return "A";
   if (role === "striker") return "A";
 
   return String(value ?? "").trim();
 }
 
-async function main() {
-  const filePath = process.argv[2];
-
-if (!filePath) {
-  throw new Error(
-    "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx"
-  );
-}
-
-  const { giornata, blocco } = parseFileName(filePath);
-
- const giocatori = [];
-const pageSize = 1000;
-
-for (let from = 0; ; from += pageSize) {
-  const to = from + pageSize - 1;
-
-  const { data, error } = await supabase
-    .from("giocatori")
-    .select("id,nome,ruolo,nazionale")
-    .range(from, to);
-
-  if (error) throw error;
-
-  giocatori.push(...(data ?? []));
-
-  if (!data || data.length < pageSize) {
-    break;
-  }
-}
-
-  const { count } = await supabase
-  .from("giocatori")
-  .select("*", { count: "exact", head: true });
-
-console.log("Totale giocatori nel DB:", count);
-
- function makePlayerKey(nome: string, ruolo: string, nazionale: string) {
+function makePlayerKey(nome: string, ruolo: string, nazionale: string) {
   return `${nome}|${ruolo}|${nazionale}`.toLowerCase();
 }
 
-const giocatoriByKey = new Map(
-  giocatori.map((g) => [
-    makePlayerKey(
-      String(g.nome).trim(),
-      String(g.ruolo).trim(),
-      String(g.nazionale).trim()
-    ),
-    g.id,
-  ])
-);
+async function creaMappaBlocchiSedicesimi(rows: any[]) {
+  const nazionaliExcel = Array.from(
+    new Set(
+      rows
+        .map((row) => String(row.Team ?? "").trim())
+        .filter(Boolean)
+    )
+  );
 
-const giocatoriList = giocatori.map((g) => ({
-  id: g.id,
-  nome: String(g.nome).trim(),
-}));
+  const { data, error } = await supabase
+    .from("calendario_partite")
+    .select("nazionale, blocco")
+    .eq("giornata", "Sedicesimi")
+    .in("nazionale", nazionaliExcel);
+
+  if (error) throw error;
+
+  const bloccoByNazionale = new Map<string, string>();
+
+  for (const r of data ?? []) {
+    bloccoByNazionale.set(
+      String(r.nazionale).trim(),
+      String(r.blocco).trim()
+    );
+  }
+
+  return bloccoByNazionale;
+}
+
+async function main() {
+  const filePath = process.argv[2];
+
+  if (!filePath) {
+    throw new Error(
+      "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx oppure data/punteggi/sedicesimi.xlsx"
+    );
+  }
+
+  const { giornata, blocco } = parseFileName(filePath);
+
+  const giocatori = [];
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+
+    const { data, error } = await supabase
+      .from("giocatori")
+      .select("id,nome,ruolo,nazionale")
+      .range(from, to);
+
+    if (error) throw error;
+
+    giocatori.push(...(data ?? []));
+
+    if (!data || data.length < pageSize) break;
+  }
+
+  const { count } = await supabase
+    .from("giocatori")
+    .select("*", { count: "exact", head: true });
+
+  console.log("Totale giocatori nel DB:", count);
+
+  const giocatoriByKey = new Map(
+    giocatori.map((g) => [
+      makePlayerKey(
+        String(g.nome).trim(),
+        String(g.ruolo).trim(),
+        String(g.nazionale).trim()
+      ),
+      g.id,
+    ])
+  );
+
+  const giocatoriList = giocatori.map((g) => ({
+    id: g.id,
+    nome: String(g.nome).trim(),
+  }));
 
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -122,71 +148,81 @@ const giocatoriList = giocatori.map((g) => ({
     defval: null,
   });
 
+  const bloccoByNazionale =
+    giornata === "Sedicesimi"
+      ? await creaMappaBlocchiSedicesimi(rows)
+      : new Map<string, string>();
+
+  if (giornata !== "Sedicesimi" && !blocco) {
+    throw new Error("Blocco non determinato.");
+  }
+
   const records = [];
   const nonTrovati = [];
 
   for (const row of rows) {
     const position = String(row.Position ?? "").trim().toLowerCase();
 
-if (position === "coach") {
-  continue;
-}
+    if (position === "coach") continue;
 
-const nome = normalizeName(row.Name);
-if (!nome) continue;
+    const nome = normalizeName(row.Name);
+    if (!nome) continue;
 
-const ruolo = normalizeRole(row.Position);
-const nazionale = String(row.Team ?? "").trim();
+    const ruolo = normalizeRole(row.Position);
+    const nazionale = String(row.Team ?? "").trim();
 
-let nomeLookup = nome;
+    const bloccoRecord =
+      giornata === "Sedicesimi" ? bloccoByNazionale.get(nazionale) : blocco;
 
-if (nome === "M. Kim" && ruolo === "D" && nazionale === "KOR") {
-  const quotazione = toNumber(row.Quotation) ?? 0;
+    if (!bloccoRecord) {
+      throw new Error(`Blocco non trovato per nazionale ${nazionale}`);
+    }
 
-  if (quotazione >= 20) {
-    nomeLookup = "M. Kim (Min-jae)";
-  } else {
-    nomeLookup = "M. Kim (Moon-hwan)";
+    let nomeLookup = nome;
+
+    if (nome === "M. Kim" && ruolo === "D" && nazionale === "KOR") {
+      const quotazione = toNumber(row.Quotation) ?? 0;
+
+      if (quotazione >= 20) {
+        nomeLookup = "M. Kim (Min-jae)";
+      } else {
+        nomeLookup = "M. Kim (Moon-hwan)";
+      }
+    }
+
+    const giocatoreId = giocatoriByKey.get(
+      makePlayerKey(nomeLookup, ruolo, nazionale)
+    );
+
+    if (!giocatoreId) {
+      const cognome = nome.split(" ").slice(1).join(" ").toLowerCase();
+
+      const possibiliMatch = giocatoriList
+        .filter((g) => g.nome.toLowerCase().includes(cognome))
+        .slice(0, 5)
+        .map((g) => g.nome);
+
+      console.log(`NON TROVATO: ${nome} -> possibili match DB:`, possibiliMatch);
+
+      nonTrovati.push(nome);
+      continue;
+    }
+
+    records.push({
+      giornata,
+      blocco: bloccoRecord,
+      giocatore_id: giocatoreId,
+      voto: toNumber(row.Rating),
+      fantapunti: toNumber(row.Fpt),
+      voto_g2: toNumber(row.Rating),
+      fantapunti_g2: toNumber(row.Fpt),
+      nome_debug: nome,
+      ruolo_debug: ruolo,
+      nazionale_debug: nazionale,
+    });
   }
-}
 
-const giocatoreId = giocatoriByKey.get(
-  makePlayerKey(nomeLookup, ruolo, nazionale)
-);
-
-if (!giocatoreId) {
-
-  const cognome = nome.split(" ").slice(1).join(" ").toLowerCase();
-
-  const possibiliMatch = giocatoriList
-    .filter((g) => g.nome.toLowerCase().includes(cognome))
-    .slice(0, 5)
-    .map((g) => g.nome);
-
-  console.log(
-    `NON TROVATO: ${nome} -> possibili match DB:`,
-    possibiliMatch
-  );
-
-  nonTrovati.push(nome);
-  continue;
-}
-
-   records.push({
-  giornata,
-  blocco,
-  giocatore_id: giocatoreId,
-  voto: toNumber(row.Rating),
-  fantapunti: toNumber(row.Fpt),
-  voto_g2: toNumber(row.Rating),
-  fantapunti_g2: toNumber(row.Fpt),
-  nome_debug: nome,
-  ruolo_debug: ruolo,
-  nazionale_debug: nazionale,
-});
-  }
-
-  console.log(`Import ${giornata} ${blocco}`);
+  console.log(`Import ${giornata}`);
   console.log(`Righe Excel: ${rows.length}`);
   console.log(`Record pronti: ${records.length}`);
   console.log(`Giocatori non trovati: ${nonTrovati.length}`);
@@ -196,12 +232,16 @@ if (!giocatoreId) {
     console.log(nonTrovati.slice(0, 30));
   }
 
-  const { error: deleteError } = await supabase
+  let deleteQuery = supabase
     .from("punteggi_giocatori")
     .delete()
-    .eq("giornata", giornata)
-    .eq("blocco", blocco);
+    .eq("giornata", giornata);
 
+  if (giornata !== "Sedicesimi") {
+    deleteQuery = deleteQuery.eq("blocco", blocco);
+  }
+
+  const { error: deleteError } = await deleteQuery;
   if (deleteError) throw deleteError;
 
   const seen = new Map<string, any>();
@@ -209,7 +249,6 @@ if (!giocatoreId) {
 
   for (const record of records) {
     const key = `${record.giornata}|${record.blocco}|${record.giocatore_id}`;
-
     const existing = seen.get(key);
 
     if (!existing) {
@@ -236,8 +275,8 @@ if (!giocatoreId) {
   const recordsUnici = Array.from(seen.values());
 
   const recordsDaInserire = recordsUnici.map(
-  ({ nome_debug, ruolo_debug, nazionale_debug, ...record }) => record
-);
+    ({ nome_debug, ruolo_debug, nazionale_debug, ...record }) => record
+  );
 
   console.log("Duplicati effettivi:");
   for (const item of duplicati) {
