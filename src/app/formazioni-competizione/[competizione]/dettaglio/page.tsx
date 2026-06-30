@@ -1,9 +1,8 @@
 import { supabase } from "../../../../lib/supabase";
 import { competizioniDesignanti } from "../../../../lib/fantagoat/continuitaCapitano";
 import {
-  calcolaDettaglioFormazione,
-  votoDaUsare,
-} from "../../../../lib/fantagoat";
+  calcolaDettaglioFormazione as calcolaDettaglioFormazioneFase2, votoDaUsare
+} from "../../../../lib/fantagoat/calcoloFormazioneFase2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -95,7 +94,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
   const panchina =
     data?.filter((g) => String(g.tipo).toLowerCase() === "panchina") ?? [];
 
-  const dettaglio = calcolaDettaglioFormazione(
+  const dettaglio = calcolaDettaglioFormazioneFase2(
     data ?? [],
     continuitaCapitano
   );
@@ -151,7 +150,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
         {continuitaCapitano && (
           <div className="mt-4 rounded-xl bg-yellow-50 p-3 text-sm text-yellow-800">
             Continuità capitano attiva. Penalità applicata:{" "}
-            <span className="font-bold">{dettaglio.penalitaCapitano}</span>
+            <span className="font-bold">{dettaglio.continuitaCapitano}</span>
           </div>
         )}
 
@@ -209,7 +208,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
             <div className="flex justify-between">
               <span>Penalità continuità capitano</span>
               <span className="font-semibold tabular-nums">
-                {dettaglio.penalitaCapitano}
+                {dettaglio.continuitaCapitano}
               </span>
             </div>
 

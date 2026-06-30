@@ -181,10 +181,7 @@ const panchinaIniziale =
   capitanoIniziale={capitanoIniziale}
   viceIniziale={viceIniziale}
   moduloIniziale={moduloIniziale}
-  formazioneBloccata={
-  competizioneData.codice === "16ALTA" ||
-  competizioneData.codice === "16BASSA"
-}
+  formazioneBloccata={false}
 />
   </main>
 );

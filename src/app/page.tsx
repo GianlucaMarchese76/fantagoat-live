@@ -3,7 +3,6 @@ import Image from "next/image";
 import { cookies } from "next/headers";
 import { supabase } from "../lib/supabase";
 import {
-  calcolaGenerale,
   labelCompetizione,
   statoCompetizione,
   getClassificaCompetizione,
@@ -12,6 +11,13 @@ import { COOKIE_PARTECIPANTE } from "../lib/fantagoat/sessione";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
+  "Sedicesimi|1-8": "16ALTA",
+  "Sedicesimi|9-16": "16BASSA",
+  "Ottavi|1-4": "8ALTA",
+  "Ottavi|5-8": "8BASSA",
+};
 
 function chiaveCalendario(giornata: string, blocco: string) {
   return `${giornata}|${blocco}`;
@@ -70,14 +76,19 @@ export default async function Home() {
     .filter((b) => now < b.deadline)
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
-  const { data: competizioneAttiva } = prossimaDeadline
-  ? await supabase
-      .from("competizioni")
-      .select("*")
-      .eq("giornata", prossimaDeadline.giornata)
-      .eq("blocco", prossimaDeadline.blocco)
-      .maybeSingle()
-  : { data: null };
+  const codiceCompetizioneHome = prossimaDeadline
+    ? CODICE_COMPETIZIONE_BY_CALENDARIO[
+        chiaveCalendario(prossimaDeadline.giornata, prossimaDeadline.blocco)
+      ]
+    : null;
+
+  const { data: competizioneAttiva } = codiceCompetizioneHome
+    ? await supabase
+        .from("competizioni")
+        .select("*")
+        .eq("codice", codiceCompetizioneHome)
+        .maybeSingle()
+    : { data: null };
 
   let hrefSchiera = "/login";
   let testoSchiera = "Accedi per schierare";
@@ -92,25 +103,28 @@ export default async function Home() {
     const rosaCompleta = (rosaCompetizione ?? []).length === 16;
 
     hrefSchiera = rosaCompleta
-  ? `/formazioni-competizione/${competizioneAttiva.codice}?partecipante=${encodeURIComponent(
-      partecipanteLoggato.slug
-    )}`
-  : `/crea-rosa/${competizioneAttiva.codice}?partecipante=${encodeURIComponent(
-      partecipanteLoggato.slug
-    )}`;
+      ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+          partecipanteLoggato.slug
+        )}`
+      : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
+          partecipanteLoggato.slug
+        )}`;
 
     testoSchiera = rosaCompleta
       ? "Vai alla tua formazione"
       : "Crea prima la tua rosa";
   }
 
-  const competizioniChiuse = competizioni?.filter((c) => c.conclusa) ?? [];
+  const { data: generaleFase1 } = await supabase
+  .from("v_classifica_generale_fase1")
+  .select("partecipante,punti")
+  .order("punti", { ascending: false });
 
-  const generale = await calcolaGenerale({
-    competizioni: competizioniChiuse,
-    getClassifica: (giornata, blocco, definitiva) =>
-      getClassificaCompetizione(supabase, giornata, blocco, definitiva),
-  });
+const generale = (generaleFase1 ?? []).map((r, index) => ({
+  posizione: index + 1,
+  partecipante: r.partecipante,
+  punti: Number(r.punti),
+}));
 
   const competizioneLive = Array.from(blocchi.values()).find((b) => {
     const c = competizioni?.find(

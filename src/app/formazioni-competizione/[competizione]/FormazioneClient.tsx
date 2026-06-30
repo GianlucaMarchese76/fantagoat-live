@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import {
-  BonusModuloEliminazione,
+  BonusModuloFase2,
   calcolaBonusModulo,
 } from "../../../lib/fantagoat";
 
@@ -253,7 +253,7 @@ export default function FormazioneClient({
 
       const bonusModulo = calcolaBonusModulo(
         MODULI[modulo].label,
-        BonusModuloEliminazione
+        BonusModuloFase2
       );
 
       const righeTitolari = titolari.map((id, index) => ({
@@ -329,11 +329,11 @@ export default function FormazioneClient({
           <div className="text-right text-sm text-slate-400">
             Bonus/malus{" "}
             <span className="ml-1 font-black text-emerald-300">
-              {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione) >
+              {calcolaBonusModulo(MODULI[modulo].label, BonusModuloFase2) >
               0
                 ? "+"
                 : ""}
-              {calcolaBonusModulo(MODULI[modulo].label, BonusModuloEliminazione)}
+              {calcolaBonusModulo(MODULI[modulo].label, BonusModuloFase2)}
             </span>
           </div>
         </div>

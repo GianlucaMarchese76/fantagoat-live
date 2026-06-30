@@ -1,4 +1,4 @@
-import { calcolaTotaleFormazione } from "./calcoloFormazione";
+import { calcolaDettaglioFormazione } from "./calcoloFormazioneFase1";
 
 export type RigaClassifica = {
   partecipante: string;
@@ -41,11 +41,18 @@ export function calcolaClassifica({
           : r.fantapunti_live ?? r.fantapunti,
       }));
 
-      return {
-        partecipante,
-        punti: calcolaTotaleFormazione(rowsCalcolo),
-        posizione: 0,
-      };
+      const dettaglio = calcolaDettaglioFormazione(rowsCalcolo);
+
+return {
+  partecipante,
+  punti:
+    dettaglio.totaleGiocatori +
+    dettaglio.bonusCapitano +
+    dettaglio.modificatoreDifesa +
+    dettaglio.modificatoreCentrocampo +
+    dettaglio.bonusModulo,
+  posizione: 0,
+};
     })
     .filter((r) => Number.isFinite(r.punti))
     .sort((a, b) => b.punti - a.punti)

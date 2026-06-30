@@ -60,7 +60,12 @@ export default async function FormazionePage({
 
   const dettaglio = calcolaDettaglioFormazione(data ?? []);
   const risultato = dettaglio.risultato;
-  const totaleFinale = dettaglio.totaleFinale;
+  const totaleFinale =
+  dettaglio.totaleGiocatori +
+  dettaglio.bonusCapitano +
+  dettaglio.modificatoreDifesa +
+  dettaglio.modificatoreCentrocampo +
+  dettaglio.bonusModulo;
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">

@@ -7,7 +7,7 @@ export type Modulo =
   | "5-3-2"
   | "5-4-1";
 
-export const BonusModuloGironi: Record<Modulo, number> = {
+export const BonusModuloFase1: Record<Modulo, number> = {
   "3-4-3": -1,
   "3-5-2": 2,
   "4-3-3": -1,
@@ -17,7 +17,7 @@ export const BonusModuloGironi: Record<Modulo, number> = {
   "5-4-1": 2,
 };
 
-export const BonusModuloEliminazione: Record<Modulo, number> = {
+export const BonusModuloFase2: Record<Modulo, number> = {
   "3-4-3": -3,
   "3-5-2": -1,
   "4-3-3": -2,
@@ -29,7 +29,7 @@ export const BonusModuloEliminazione: Record<Modulo, number> = {
 
 export function calcolaBonusModulo(
   modulo: string,
-  bonusModulo: Record<Modulo, number> = BonusModuloGironi
+  bonusModulo: Record<Modulo, number> = BonusModuloFase1
 ) {
   return bonusModulo[modulo as Modulo] ?? 0;
 }

@@ -1,4 +1,4 @@
-export * from "./calcoloFormazione";
+export * from "./calcoloFormazioneFase1";
 export * from "./regoleModulo";
 
 export * from "./calcolaClassifica";
@@ -9,4 +9,3 @@ export * from "./statoCompetizione";
 export * from "./getClassificaCompetizione";
 export * from "./creaSlug";
 export * from "./moduli";
-export * from "./competizioni";

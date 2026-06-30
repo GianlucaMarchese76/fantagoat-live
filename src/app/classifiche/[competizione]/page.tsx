@@ -139,9 +139,17 @@ export default async function ClassificaPage({
           {classifica.map((r) => (
             <a
               key={r.partecipante}
-              href={`/formazioni-competizione/${competizioneNorm}/dettaglio?partecipante=${encodeURIComponent(
-  r.partecipante.toLowerCase().replaceAll(" ", "")
-)}`}
+              href={
+  ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"].includes(
+    competizioneNorm
+  )
+    ? `/formazioni/${encodeURIComponent(
+        r.partecipante.toLowerCase().replaceAll(" ", "")
+      )}/${giornata}/${blocco}`
+    : `/formazioni-competizione/${competizioneNorm}/dettaglio?partecipante=${encodeURIComponent(
+        r.partecipante.toLowerCase().replaceAll(" ", "")
+      )}`
+}
               className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">

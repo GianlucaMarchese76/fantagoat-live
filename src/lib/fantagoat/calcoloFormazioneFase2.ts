@@ -1,5 +1,5 @@
 import {
-  BonusModuloGironi,
+  BonusModuloFase2,
   calcolaBonusModulo,
 } from "./regoleModulo";
 
@@ -239,7 +239,7 @@ type ContinuitaCapitano = {
   vicePrecedenti: string[];
 };
 
-function calcolaPenalitaContinuitaCapitano(
+function calcolaContinuitaCapitano(
   effettivi: any[],
   continuita?: ContinuitaCapitano
 ) {
@@ -291,12 +291,10 @@ export function calcolaDettaglioFormazione(
   const modificatoreCentrocampo = calcolaModCentrocampo(risultato.effettivi);
   const bonusModulo = calcolaBonusModulo(
     risultato.moduloFinale,
-    BonusModuloGironi
+    BonusModuloFase2
   );
 
-  const modificatoreAttacco = 0;
-  const golDecisivo = 0;
-  const penalitaCapitano = calcolaPenalitaContinuitaCapitano(
+  const continuitaCapitano = calcolaContinuitaCapitano(
   risultato.effettivi,
   continuita
 );
@@ -307,11 +305,9 @@ export function calcolaDettaglioFormazione(
     bonusCapitano +
     modificatoreDifesa +
     modificatoreCentrocampo +
-    modificatoreAttacco +
     bonusModulo +
     bonusPanchina +
-    golDecisivo +
-    penalitaCapitano;
+    continuitaCapitano;
 
   const totaleFinale = totalePrimaMoltiplicatore * moltiplicatore;
 
@@ -321,11 +317,9 @@ export function calcolaDettaglioFormazione(
     bonusCapitano,
     modificatoreDifesa,
     modificatoreCentrocampo,
-    modificatoreAttacco,
     bonusModulo,
     bonusPanchina,
-    golDecisivo,
-    penalitaCapitano,
+    continuitaCapitano,
     moltiplicatore,
     totalePrimaMoltiplicatore,
     totaleFinale,
