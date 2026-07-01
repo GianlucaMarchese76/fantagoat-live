@@ -224,16 +224,16 @@ const panchinaResidua = panchina.filter(
               <span className="truncate">{g.giocatore}</span>
 
               {g.is_capitano && (
-                <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
-                  👑 C
-                </span>
-              )}
+  <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
+    CAP
+  </span>
+)}
 
-              {g.is_vice && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
-                  V
-                </span>
-              )}
+{g.is_vice && (
+  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+    VC
+  </span>
+)}
             </div>
 
             <div className="mt-0.5 text-sm text-slate-500">
@@ -277,9 +277,17 @@ const panchinaResidua = panchina.filter(
         </div>
 
         <div className="text-right">
-          <div className="text-xl font-bold tabular-nums">
-            {fantapuntiDaMostrare(g)}
-          </div>
+          <div
+  className={`text-xl font-bold tabular-nums ${
+    g.stato_calcolato === "PARTITA_DA_GIOCARE" ||
+    g.stato_calcolato === "PARTITA_IN_CORSO" ||
+    g.stato_calcolato === "IN_ATTESA_DATI"
+      ? "text-slate-400"
+      : "text-slate-900"
+  }`}
+>
+  {fantapuntiDaMostrare(g)}
+</div>
 
           <div className="text-xs text-slate-500">
             {votoLabelDaMostrare(g)}

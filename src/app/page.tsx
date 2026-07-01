@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { labelCompetizione, statoCompetizione } from "../lib/fantagoat";
 import { COOKIE_PARTECIPANTE } from "../lib/fantagoat/sessione";
 import ClassificaLive from "../components/ClassificaLive";
+import CountdownDeadline from "../components/CountdownDeadline";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -108,11 +109,11 @@ export default async function Home() {
     .filter((b) => now < b.deadline)
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
-  const codiceCompetizioneHome = prossimaDeadline
-    ? CODICE_COMPETIZIONE_BY_CALENDARIO[
-        chiaveCalendario(prossimaDeadline.giornata, prossimaDeadline.blocco)
-      ]
-    : null;
+const codiceCompetizioneHome = prossimaDeadline
+  ? CODICE_COMPETIZIONE_BY_CALENDARIO[
+      chiaveCalendario(prossimaDeadline.giornata, prossimaDeadline.blocco)
+    ]
+  : null;
 
   const { data: competizioneAttiva } = codiceCompetizioneHome
     ? await supabase
@@ -269,6 +270,11 @@ export default async function Home() {
                   timeZone: "Europe/Rome",
                 })}
               </div>
+
+<div className="mt-2 text-lg font-black text-white">
+  <CountdownDeadline deadline={prossimaDeadline.deadline.toISOString()} />
+</div>
+
             </div>
           )}
 
