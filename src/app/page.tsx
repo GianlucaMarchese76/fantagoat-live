@@ -106,12 +106,28 @@ export default async function Home() {
   }
 
   const prossimaDeadline = Array.from(blocchi.values())
-    .filter((b) => now < b.deadline)
-    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
+  .filter((b) => now < b.deadline)
+  .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
 
-const codiceCompetizioneHome = prossimaDeadline
+const competizioneGiocabile =
+  prossimaDeadline ??
+  Array.from(blocchi.values())
+    .filter((b) => {
+      const codice =
+        CODICE_COMPETIZIONE_BY_CALENDARIO[
+          chiaveCalendario(b.giornata, b.blocco)
+        ];
+
+      return Boolean(codice);
+    })
+    .sort((a, b) => b.primaPartita.getTime() - a.primaPartita.getTime())[0];
+
+const codiceCompetizioneHome = competizioneGiocabile
   ? CODICE_COMPETIZIONE_BY_CALENDARIO[
-      chiaveCalendario(prossimaDeadline.giornata, prossimaDeadline.blocco)
+      chiaveCalendario(
+        competizioneGiocabile.giornata,
+        competizioneGiocabile.blocco
+      )
     ]
   : null;
 
