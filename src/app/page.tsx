@@ -123,8 +123,8 @@ const codiceCompetizioneHome = prossimaDeadline
         .maybeSingle()
     : { data: null };
 
-  let hrefSchiera = `/login?redirect=${encodeURIComponent("/")}`;
-  let testoSchiera = "Accedi per schierare";
+  let hrefSchiera = "/login";
+let testoSchiera = "Accedi per schierare";
 
   if (partecipanteLoggato && competizioneAttiva) {
     const { data: rosaCompetizione } = await supabase
