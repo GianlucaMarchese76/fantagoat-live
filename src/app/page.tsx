@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
-  "Sedicesimi|1-8": "16ALTA",
-  "Sedicesimi|9-16": "16BASSA",
-  "Ottavi|1-4": "8ALTA",
-  "Ottavi|5-8": "8BASSA",
+  "sedicesimi|1-8": "16ALTA",
+  "sedicesimi|9-16": "16BASSA",
+  "ottavi|1-4": "8ALTA",
+  "ottavi|5-8": "8BASSA",
 };
 
 function chiaveCalendario(giornata: string, blocco: string) {
@@ -94,6 +94,19 @@ export default async function Home() {
   for (const p of partite ?? []) {
     const key = chiaveCalendario(p.giornata, p.blocco);
     const kickoff = new Date(p.kickoff);
+
+console.log(
+  "Blocchi:",
+  Array.from(blocchi.values()).map((b) => ({
+    giornata: b.giornata,
+    blocco: b.blocco,
+    chiave: chiaveCalendario(b.giornata, b.blocco),
+    codice:
+      CODICE_COMPETIZIONE_BY_CALENDARIO[
+        chiaveCalendario(b.giornata, b.blocco)
+      ],
+  }))
+);
 
     if (!blocchi.has(key) || kickoff < blocchi.get(key)!.primaPartita) {
       blocchi.set(key, {
@@ -217,6 +230,14 @@ let testoSchiera = "Accedi per schierare";
   ).size;
 
   const partiteMancantiLive = partiteTotaliLive - partiteGiocateLive;
+
+console.log({
+  slugLoggato,
+  partecipante: partecipanteLoggato?.slug,
+  codiceCompetizioneHome,
+  competizioneAttiva: competizioneAttiva?.codice,
+  hrefSchiera,
+});
 
   return (
     <main className="min-h-screen bg-slate-100 p-4">
