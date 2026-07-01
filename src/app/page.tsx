@@ -123,7 +123,7 @@ const codiceCompetizioneHome = prossimaDeadline
         .maybeSingle()
     : { data: null };
 
-  let hrefSchiera = "/login";
+  let hrefSchiera = `/login?redirect=${encodeURIComponent("/")}`;
   let testoSchiera = "Accedi per schierare";
 
   if (partecipanteLoggato && competizioneAttiva) {

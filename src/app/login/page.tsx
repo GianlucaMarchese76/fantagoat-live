@@ -6,7 +6,11 @@ export const revalidate = 0;
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ errore?: string; creato?: string }>;
+  searchParams: Promise<{
+    errore?: string;
+    creato?: string;
+    redirect?: string;
+  }>;
 }) {
   const params = await searchParams;
 
@@ -26,12 +30,19 @@ export default async function LoginPage({
           />
 
           <h1 className="mt-3 text-3xl font-black">FantaGOAT 2026</h1>
+
           <p className="mt-1 text-sm text-slate-400">
             Accedi o crea il tuo partecipante
           </p>
         </div>
 
         <form method="post" action="/api/login" className="mt-6 grid gap-3">
+          <input
+            type="hidden"
+            name="redirect"
+            value={params.redirect ?? "/"}
+          />
+
           <h2 className="text-lg font-black">Accedi</h2>
 
           <select
@@ -40,6 +51,7 @@ export default async function LoginPage({
             className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-white"
           >
             <option value="">Seleziona partecipante</option>
+
             {(partecipanti ?? []).map((p) => (
               <option key={p.slug} value={p.slug}>
                 {p.nome}
@@ -88,6 +100,12 @@ export default async function LoginPage({
         {params.errore && (
           <div className="mt-4 rounded-xl bg-red-950 p-3 text-sm font-bold text-red-200">
             Operazione non riuscita. Controlla i dati inseriti.
+          </div>
+        )}
+
+        {params.creato && (
+          <div className="mt-4 rounded-xl bg-emerald-950 p-3 text-sm font-bold text-emerald-200">
+            Partecipante creato correttamente. Ora puoi accedere.
           </div>
         )}
 

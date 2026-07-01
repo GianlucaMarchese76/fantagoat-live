@@ -7,6 +7,9 @@ export async function POST(request: Request) {
 
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   const codice = String(formData.get("codice") ?? "").trim();
+  const redirectRaw = String(formData.get("redirect") ?? "/").trim();
+
+  const redirectPath = redirectRaw.startsWith("/") ? redirectRaw : "/";
 
   const { data: partecipante } = await supabase
     .from("partecipanti")
@@ -15,10 +18,12 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!partecipante || partecipante.codice_accesso !== codice) {
-    return NextResponse.redirect(new URL("/login?errore=1", request.url));
+    return NextResponse.redirect(
+      new URL(`/login?errore=1&redirect=${encodeURIComponent(redirectPath)}`, request.url)
+    );
   }
 
-  const response = NextResponse.redirect(new URL("/", request.url));
+  const response = NextResponse.redirect(new URL(redirectPath, request.url));
 
   response.cookies.set(COOKIE_PARTECIPANTE, partecipante.slug, {
     httpOnly: true,
