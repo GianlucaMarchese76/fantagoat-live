@@ -5,7 +5,7 @@ import { ordinaRosa, prezzoGiocatore } from "../lib/regoleRosa";
 
 export default function RosaPanel({
   rosa,
-  competizioneChiusa,
+  rosaBloccata,
   salvataggio,
   messaggio,
   svuotaRosa,
@@ -13,7 +13,7 @@ export default function RosaPanel({
   handleConfermaRosa,
 }: {
   rosa: Giocatore[];
-  competizioneChiusa: boolean;
+  rosaBloccata: boolean;
   salvataggio: boolean;
   messaggio: string;
   svuotaRosa: () => void;
@@ -29,8 +29,8 @@ export default function RosaPanel({
 
         <button
           onClick={svuotaRosa}
-          disabled={rosa.length === 0}
-          className="rounded-lg bg-red-700 px-2 py-1 text-xs font-bold text-white disabled:bg-slate-700 disabled:text-slate-400"
+          disabled={rosaBloccata || rosa.length === 0}
+          className="rounded-lg bg-red-700 px-2 py-1 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
           Svuota
         </button>
@@ -46,14 +46,17 @@ export default function RosaPanel({
               className="grid grid-cols-[24px_1fr_38px_24px] items-center gap-1 rounded-md bg-[#07101f] px-2 py-1 text-xs ring-1 ring-slate-700/70"
             >
               <span className="font-black text-amber-300">{g.ruolo}</span>
+
               <span className="truncate font-bold text-white">{g.nome}</span>
+
               <span className="font-bold text-white tabular-nums">
-  {prezzoGiocatore(g)}
-</span>
+                {prezzoGiocatore(g)}
+              </span>
 
               <button
                 onClick={() => rimuoviGiocatore(g.id)}
-                className="text-right font-black text-red-300"
+                disabled={rosaBloccata}
+                className="text-right font-black text-red-300 disabled:cursor-not-allowed disabled:text-slate-600"
               >
                 ×
               </button>
@@ -63,23 +66,23 @@ export default function RosaPanel({
       )}
 
       <div className="mt-4 space-y-2">
-        {competizioneChiusa ? (
-          <div className="rounded-lg border border-red-900/60 bg-red-950/40 p-2 text-sm font-bold text-red-200">
-            🔒 Competizione chiusa
+        {rosaBloccata ? (
+          <div className="rounded-lg border border-amber-700/70 bg-amber-950/40 p-2 text-sm font-bold text-amber-200">
+            🔒 Rosa bloccata: la competizione è iniziata.
           </div>
         ) : (
           <>
             <button
-  onClick={handleConfermaRosa}
-  disabled={salvataggio || rosa.length !== 16}
-  className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:opacity-60"
->
-  {salvataggio
-    ? "Salvataggio..."
-    : rosa.length !== 16
-      ? `Completa la rosa (${rosa.length}/16)`
-      : "Conferma Rosa"}
-</button>
+              onClick={handleConfermaRosa}
+              disabled={salvataggio || rosa.length !== 16}
+              className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:opacity-60"
+            >
+              {salvataggio
+                ? "Salvataggio..."
+                : rosa.length !== 16
+                  ? `Completa la rosa (${rosa.length}/16)`
+                  : "Conferma Rosa"}
+            </button>
 
             {messaggio && (
               <div className="rounded-lg bg-[#07101f] p-2 text-xs font-bold text-slate-200">
@@ -87,6 +90,12 @@ export default function RosaPanel({
               </div>
             )}
           </>
+        )}
+
+        {rosaBloccata && messaggio && (
+          <div className="rounded-lg bg-[#07101f] p-2 text-xs font-bold text-slate-200">
+            {messaggio}
+          </div>
         )}
       </div>
     </aside>

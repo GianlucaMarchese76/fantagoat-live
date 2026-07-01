@@ -81,6 +81,16 @@ export default async function FormazioneCompetizioneDettaglioPage({
   const totaleFinale = dettaglio.totaleFinale;
   const panchina = risultato.panchina ?? [];
 
+  const idsEntrati = new Set(
+  risultato.sostituzioni
+    .filter((s) => s.tipo === "sostituzione" && s.in)
+    .map((s) => s.in.giocatore_id)
+);
+
+const panchinaResidua = panchina.filter(
+  (g) => !idsEntrati.has(g.giocatore_id)
+);
+
   function bandiera(nazionale: string) {
     return `/bandiere/${String(nazionale ?? "").trim()}.svg`;
   }
@@ -474,7 +484,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
         </p>
 
         <div className="grid gap-2">
-          {panchina.map((g, index) => (
+          {panchinaResidua.map((g, index) => (
             <RigaGiocatore
               key={`${g.giocatore_id}-${index}`}
               g={g}

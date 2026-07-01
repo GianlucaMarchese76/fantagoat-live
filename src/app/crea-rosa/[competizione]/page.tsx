@@ -156,7 +156,11 @@ const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
     .order("tipo")
     .order("ordine");
 
-  return (
+  const rosaBloccata =
+    competizioneData.codice === "16ALTA" ||
+    competizioneData.codice === "16BASSA";
+
+    return (
     <CreaRosaClient
       competizione={competizioneData}
       partecipante={partecipanteData}
@@ -165,6 +169,7 @@ const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
       formazioneEsistente={formazioneEsistente ?? []}
       campoQuotazione={campoQuotazione}
       partite={partiteFase}
+      rosaBloccata={rosaBloccata}
     />
   );
 }

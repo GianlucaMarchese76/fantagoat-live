@@ -90,7 +90,7 @@ export default async function ClassificaLive() {
             className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
           >
             <Link
-              href={`/partecipanti/${encodeURIComponent(r.slug)}`}
+              href={`/partecipanti/${encodeURIComponent(r.slug)}/sedicesimi`}
               className="font-semibold hover:text-blue-600"
             >
               {r.posizione}. {r.partecipante}

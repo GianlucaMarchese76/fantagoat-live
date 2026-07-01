@@ -44,6 +44,7 @@ type Props = {
   formazioneEsistente: FormazioneCompetizioneSalvata[];
   campoQuotazione: string;
   partite: PartitaFase[];
+  rosaBloccata: boolean;
 };
 
 export default function CreaRosaClient({
@@ -53,11 +54,11 @@ export default function CreaRosaClient({
   rosaIniziale,
   formazioneEsistente,
   partite,
+  rosaBloccata,
 }: Props) {
   const router = useRouter();
   const BUDGET_MAX = competizione.budget;
   const MAX_PER_NAZIONALE = competizione.max_per_nazionale;
-  const competizioneChiusa = !competizione.attiva || competizione.conclusa;
 
   const avversariByNazionale = useMemo(() => {
   const map = new Map<string, string>();
@@ -188,23 +189,30 @@ export default function CreaRosaClient({
   }
 
   function aggiungiGiocatore(g: Giocatore) {
+    if (rosaBloccata) return;
     if (motivoBlocco(g)) return;
     setRosa((prev) => [...prev, g]);
     setMessaggio("");
   }
 
   function rimuoviGiocatore(id: number) {
+    if (rosaBloccata) return;
     setRosa((prev) => prev.filter((g) => g.id !== id));
     setMessaggio("");
   }
 
   function svuotaRosa() {
+    if (rosaBloccata) return;
     if (!confirm("Vuoi davvero svuotare tutta la rosa?")) return;
     setRosa([]);
     setMessaggio("");
   }
 
   async function handleConfermaRosa() {
+    if (rosaBloccata) {
+  setMessaggio("La rosa è bloccata e non può più essere modificata.");
+  return;
+}
   if (rosa.length !== LIMITE_GIOCATORI) {
     setMessaggio("La rosa deve contenere esattamente 16 giocatori.");
     return;
@@ -345,16 +353,22 @@ if (!righeFormazione.some((r) => r.is_vice)) {
 </a>
         <RosaHeader competizione={competizione} partecipante={partecipante} />
 
+        {rosaBloccata && (
+  <div className="mt-3 rounded-xl border border-amber-600 bg-amber-950/40 p-3 text-amber-200">
+    La rosa di questa competizione è bloccata e non può più essere modificata.
+  </div>
+)}
+
 <main className="grid gap-3">
           <RosaPanel
-            rosa={rosa}
-            competizioneChiusa={competizioneChiusa}
-            salvataggio={salvataggio}
-            messaggio={messaggio}
-            svuotaRosa={svuotaRosa}
-            rimuoviGiocatore={rimuoviGiocatore}
-            handleConfermaRosa={handleConfermaRosa}
-          />
+  rosa={rosa}
+  rosaBloccata={rosaBloccata}
+  salvataggio={salvataggio}
+  messaggio={messaggio}
+  svuotaRosa={svuotaRosa}
+  rimuoviGiocatore={rimuoviGiocatore}
+  handleConfermaRosa={handleConfermaRosa}
+/>
 
         <BudgetBar
           budgetUsato={budgetUsato}
