@@ -11,28 +11,39 @@ type RisultatoFase1 = {
   punti: number;
 };
 
+function slugPartecipante(nome: string) {
+  return String(nome ?? "").toLowerCase().replaceAll(" ", "");
+}
+
 export default async function PartecipantePage({
   params,
 }: {
   params: Promise<{ nome: string }>;
 }) {
   const { nome } = await params;
-  const partecipante = decodeURIComponent(nome);
+  const slug = decodeURIComponent(nome).toLowerCase();
 
   const { data } = await supabase
     .from("v_risultati_fase1")
-    .select("partecipante,giornata,blocco,punti")
-    .eq("partecipante", partecipante);
+    .select("partecipante,giornata,blocco,punti");
 
-  const risultati = ((data ?? []) as RisultatoFase1[]).sort((a, b) => {
-    const ordine = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
-    return (
-      ordine.indexOf(`${a.giornata}${a.blocco}`) -
-      ordine.indexOf(`${b.giornata}${b.blocco}`)
-    );
-  });
+  const risultati = ((data ?? []) as RisultatoFase1[])
+    .filter((r) => slugPartecipante(r.partecipante) === slug)
+    .sort((a, b) => {
+      const ordine = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
 
-  const totale = risultati.reduce((sum, r) => sum + Number(r.punti), 0);
+      return (
+        ordine.indexOf(`${a.giornata}${a.blocco}`) -
+        ordine.indexOf(`${b.giornata}${b.blocco}`)
+      );
+    });
+
+  const partecipante = risultati[0]?.partecipante ?? slug;
+
+  const totale = risultati.reduce(
+    (sum, r) => sum + Number(r.punti ?? 0),
+    0
+  );
 
   return (
     <main className="min-h-screen bg-slate-100 p-4">
@@ -45,14 +56,14 @@ export default async function PartecipantePage({
 
         <div className="mt-3 flex gap-4 text-sm">
           <a
-            href={`/partecipanti/${encodeURIComponent(partecipante)}/AF`}
+            href={`/partecipanti/${encodeURIComponent(slug)}/AF`}
             className="font-semibold text-blue-600"
           >
             Rosa A-F
           </a>
 
           <a
-            href={`/partecipanti/${encodeURIComponent(partecipante)}/GL`}
+            href={`/partecipanti/${encodeURIComponent(slug)}/GL`}
             className="font-semibold text-blue-600"
           >
             Rosa G-L
@@ -69,9 +80,9 @@ export default async function PartecipantePage({
           {risultati.map((r) => (
             <Link
               key={`${r.giornata}${r.blocco}`}
-              href={`/formazioni/${encodeURIComponent(partecipante)}/${
-                r.giornata
-              }/${r.blocco}`}
+              href={`/formazioni/${encodeURIComponent(
+                r.partecipante
+              )}/${r.giornata}/${r.blocco}`}
               className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
             >
               <div>

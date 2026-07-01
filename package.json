@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "import-punteggi": "tsx scripts/import-punteggi.ts",
-    "import-gol-decisivi": "tsx scripts/import-gol-decisivi.ts"
+    "import-gol-decisivi": "tsx scripts/import-gol-decisivi.ts",
+    "import-extra-punti": "tsx scripts/import-extra-punti.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
@@ -29,4 +30,5 @@
     "tsx": "^4.22.4",
     "typescript": "^5"
   }
+  
 }

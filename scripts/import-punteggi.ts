@@ -23,7 +23,7 @@ function parseFileName(filePath: string) {
   }
 
   if (base.toLowerCase() === "sedicesimi") {
-    return { giornata: "Sedicesimi", blocco: null as string | null };
+    return { giornata: "sedicesimi", blocco: null as string | null };
   }
 
   throw new Error(
@@ -57,23 +57,23 @@ function normalizeRole(value: unknown): string {
   return String(value ?? "").trim();
 }
 
+function normalizeTeam(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
 function makePlayerKey(nome: string, ruolo: string, nazionale: string) {
   return `${nome}|${ruolo}|${nazionale}`.toLowerCase();
 }
 
 async function creaMappaBlocchiSedicesimi(rows: any[]) {
   const nazionaliExcel = Array.from(
-    new Set(
-      rows
-        .map((row) => String(row.Team ?? "").trim())
-        .filter(Boolean)
-    )
+    new Set(rows.map((row) => normalizeTeam(row.Team)).filter(Boolean))
   );
 
   const { data, error } = await supabase
     .from("calendario_partite")
     .select("nazionale, blocco")
-    .eq("giornata", "Sedicesimi")
+    .eq("giornata", "sedicesimi")
     .in("nazionale", nazionaliExcel);
 
   if (error) throw error;
@@ -149,16 +149,17 @@ async function main() {
   });
 
   const bloccoByNazionale =
-    giornata === "Sedicesimi"
+    giornata === "sedicesimi"
       ? await creaMappaBlocchiSedicesimi(rows)
       : new Map<string, string>();
 
-  if (giornata !== "Sedicesimi" && !blocco) {
+  if (giornata !== "sedicesimi" && !blocco) {
     throw new Error("Blocco non determinato.");
   }
 
   const records = [];
   const nonTrovati = [];
+  const saltati = [];
 
   for (const row of rows) {
     const position = String(row.Position ?? "").trim().toLowerCase();
@@ -169,13 +170,14 @@ async function main() {
     if (!nome) continue;
 
     const ruolo = normalizeRole(row.Position);
-    const nazionale = String(row.Team ?? "").trim();
+    const nazionale = normalizeTeam(row.Team);
 
     const bloccoRecord =
-      giornata === "Sedicesimi" ? bloccoByNazionale.get(nazionale) : blocco;
+      giornata === "sedicesimi" ? bloccoByNazionale.get(nazionale) : blocco;
 
     if (!bloccoRecord) {
-      throw new Error(`Blocco non trovato per nazionale ${nazionale}`);
+      saltati.push(`${nazionale} - ${nome}`);
+      continue;
     }
 
     let nomeLookup = nome;
@@ -204,7 +206,7 @@ async function main() {
 
       console.log(`NON TROVATO: ${nome} -> possibili match DB:`, possibiliMatch);
 
-      nonTrovati.push(nome);
+      nonTrovati.push(`${nome} (${ruolo}, ${nazionale})`);
       continue;
     }
 
@@ -226,23 +228,17 @@ async function main() {
   console.log(`Righe Excel: ${rows.length}`);
   console.log(`Record pronti: ${records.length}`);
   console.log(`Giocatori non trovati: ${nonTrovati.length}`);
+  console.log(`Righe saltate per nazionale fuori competizione: ${saltati.length}`);
+
+  if (saltati.length > 0) {
+    console.log("Prime righe saltate:");
+    console.log(saltati.slice(0, 30));
+  }
 
   if (nonTrovati.length > 0) {
     console.log("Primi non trovati:");
     console.log(nonTrovati.slice(0, 30));
   }
-
-  let deleteQuery = supabase
-    .from("punteggi_giocatori")
-    .delete()
-    .eq("giornata", giornata);
-
-  if (giornata !== "Sedicesimi") {
-    deleteQuery = deleteQuery.eq("blocco", blocco);
-  }
-
-  const { error: deleteError } = await deleteQuery;
-  if (deleteError) throw deleteError;
 
   const seen = new Map<string, any>();
   const duplicati = [];
@@ -302,14 +298,17 @@ async function main() {
   console.log(`Duplicati rimossi: ${duplicati.length}`);
 
   if (recordsUnici.length > 0) {
-    const { error: insertError } = await supabase
+    const { error: upsertError } = await supabase
       .from("punteggi_giocatori")
-      .insert(recordsDaInserire);
+      .upsert(recordsDaInserire, {
+        onConflict: "giornata,blocco,giocatore_id",
+      });
 
-    if (insertError) throw insertError;
+    if (upsertError) throw upsertError;
   }
 
   console.log("Import completato.");
+  console.log("Nota: import eseguito con upsert, senza delete preventivo.");
 }
 
 main().catch((error) => {

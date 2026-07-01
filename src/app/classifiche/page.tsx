@@ -22,12 +22,12 @@ const competizioniFase1: CompetizioneCard[] = [
 ];
 
 const competizioniFase2: CompetizioneCard[] = [
-  { codice: "16ALTA", label: "Sedicesimi • Gare 1-8", giornata: "sedicesimi", blocco: "1-8" },
-  { codice: "16BASSA", label: "Sedicesimi • Gare 9-16", giornata: "sedicesimi", blocco: "9-16" },
-  { codice: "8ALTA", label: "Ottavi • Gare 1-4", giornata: "ottavi", blocco: "1-4" },
-  { codice: "8BASSA", label: "Ottavi • Gare 5-8", giornata: "ottavi", blocco: "5-8" },
-  { codice: "QUARTI", label: "Quarti di finale", giornata: "quarti", blocco: "unico" },
-  { codice: "SEMIFINALI", label: "Semifinali", giornata: "semifinale", blocco: "unico" },
+  { codice: "16ALTA", label: "Sedicesimi • Gare 1-8", giornata: "Sedicesimi", blocco: "1-8" },
+  { codice: "16BASSA", label: "Sedicesimi • Gare 9-16", giornata: "Sedicesimi", blocco: "9-16" },
+  { codice: "8ALTA", label: "Ottavi • Gare 1-4", giornata: "Ottavi", blocco: "1-4" },
+  { codice: "8BASSA", label: "Ottavi • Gare 5-8", giornata: "Ottavi", blocco: "5-8" },
+  { codice: "QUARTI", label: "Quarti di finale", giornata: "Quarti", blocco: "unico" },
+  { codice: "SEMIFINALI", label: "Semifinali", giornata: "Semifinale", blocco: "unico" },
   { codice: "TERZOPOSTO", label: "Finale 3° posto", giornata: "terzo_posto", blocco: "unico" },
   { codice: "FINALE", label: "Finale", giornata: "finale", blocco: "unico" },
 ];

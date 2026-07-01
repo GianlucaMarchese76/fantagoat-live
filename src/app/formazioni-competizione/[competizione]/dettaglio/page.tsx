@@ -1,7 +1,8 @@
 import { supabase } from "../../../../lib/supabase";
 import { competizioniDesignanti } from "../../../../lib/fantagoat/continuitaCapitano";
 import {
-  calcolaDettaglioFormazione as calcolaDettaglioFormazioneFase2, votoDaUsare
+  calcolaDettaglioFormazione as calcolaDettaglioFormazioneFase2,
+  votoDaUsare,
 } from "../../../../lib/fantagoat/calcoloFormazioneFase2";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +19,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
   const { partecipante } = await searchParams;
 
   const competizioneNorm = competizione.toUpperCase();
-  const partecipanteNorm = partecipante
-  ?.trim()
-  .toLowerCase()
-  .replaceAll(" ", "");
+  const partecipanteNorm = partecipante?.trim().toLowerCase().replaceAll(" ", "");
 
   if (!partecipanteNorm) {
     return (
@@ -50,14 +48,6 @@ export default async function FormazioneCompetizioneDettaglioPage({
     .order("tipo")
     .order("ordine");
 
-  console.log("DEBUG DETTAGLIO", {
-    competizioneNorm,
-    partecipanteNorm,
-    righe: data?.length ?? 0,
-    tipi: [...new Set((data ?? []).map((r) => r.tipo))],
-    error,
-  });
-
   const nomePartecipante = data?.[0]?.partecipante ?? partecipanteNorm;
   const nomeCompetizione = data?.[0]?.competizione_nome ?? competizioneNorm;
 
@@ -80,27 +70,218 @@ export default async function FormazioneCompetizioneDettaglioPage({
 
     continuitaCapitano = {
       capitaniPrecedenti:
-        designati
-          ?.filter((g) => g.is_capitano)
-          .map((g) => g.giocatore_id) ?? [],
-
+        designati?.filter((g) => g.is_capitano).map((g) => g.giocatore_id) ?? [],
       vicePrecedenti:
-        designati
-          ?.filter((g) => g.is_vice)
-          .map((g) => g.giocatore_id) ?? [],
+        designati?.filter((g) => g.is_vice).map((g) => g.giocatore_id) ?? [],
     };
   }
 
-  const panchina =
-    data?.filter((g) => String(g.tipo).toLowerCase() === "panchina") ?? [];
-
-  const dettaglio = calcolaDettaglioFormazioneFase2(
-    data ?? [],
-    continuitaCapitano
-  );
-
+  const dettaglio = calcolaDettaglioFormazioneFase2(data ?? [], continuitaCapitano);
   const risultato = dettaglio.risultato;
   const totaleFinale = dettaglio.totaleFinale;
+  const panchina = risultato.panchina ?? [];
+
+  function bandiera(nazionale: string) {
+    return `/bandiere/${String(nazionale ?? "").trim()}.svg`;
+  }
+
+  function badgeRuolo(ruolo: string) {
+    switch (ruolo) {
+      case "P":
+        return "bg-sky-100 text-sky-700 border-sky-200";
+      case "D":
+        return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "C":
+        return "bg-amber-100 text-amber-700 border-amber-200";
+      case "A":
+        return "bg-rose-100 text-rose-700 border-rose-200";
+      default:
+        return "bg-slate-100 text-slate-700 border-slate-200";
+    }
+  }
+
+  function statoNonDefinitivo(stato: string) {
+    return [
+      "da_giocare",
+      "partita_da_giocare",
+      "in_corso",
+      "in_campo",
+      "in_attesa_dati",
+      "in_attesa_voto",
+    ].includes(String(stato));
+  }
+
+  function labelStatoPartita(g: any) {
+  switch (g.stato_calcolato) {
+    case "PARTITA_DA_GIOCARE":
+      return "Partita da giocare";
+
+    case "PARTITA_IN_CORSO":
+      return "Partita in corso";
+
+    case "IN_ATTESA_DATI":
+      return "In attesa dei dati";
+
+    case "HA_VOTO":
+      return "Dati aggiornati";
+
+    case "SENZA_VOTO":
+      return "Senza voto";
+
+    default:
+      return "—";
+  }
+}
+
+  function dataPartita(g: any) {
+    if (!g.kickoff) return null;
+
+    return new Date(g.kickoff).toLocaleDateString("it-IT", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+  }
+
+  function fantapuntiDaMostrare(g: any) {
+    if (statoNonDefinitivo(g.stato_giocatore)) return 6;
+    if (g.non_utilizzabile_bonus_panchina) return 0;
+    return g.fantapunti_calcolo ?? g.fantapunti_live ?? g.fantapunti ?? 0;
+  }
+
+  function votoLabelDaMostrare(g: any) {
+    if (statoNonDefinitivo(g.stato_giocatore)) {
+      return "voto ipotizzato 6";
+    }
+
+    return `voto ${votoDaUsare(g)}`;
+  }
+
+  function fantapuntiLabelDaMostrare(g: any) {
+    if (statoNonDefinitivo(g.stato_giocatore)) {
+      return "FP ipotizzato 6";
+    }
+
+    return `FP ${fantapuntiDaMostrare(g)}`;
+  }
+
+  function RigaGiocatore({
+    g,
+    index,
+    panchinaCard = false,
+  }: {
+    g: any;
+    index: number;
+    panchinaCard?: boolean;
+  }) {
+    const nonUtilizzabile = g.non_utilizzabile_bonus_panchina;
+
+    return (
+      <div
+        key={`${g.giocatore_id}-${g.stato}-${index}`}
+        className={`flex items-center justify-between rounded-xl px-4 py-3 shadow-sm ${
+          nonUtilizzabile
+            ? "bg-slate-200 text-slate-400 opacity-70"
+            : "bg-white"
+        } ${
+          g.stato === "entrato"
+            ? "border-2 border-green-300"
+            : g.stato === "ufficio"
+              ? "border-2 border-red-300"
+              : ""
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-base font-black ${badgeRuolo(
+              g.ruolo
+            )}`}
+          >
+            {g.ruolo}
+          </div>
+
+          <img
+            src={bandiera(g.nazionale)}
+            alt={g.nazionale}
+            className="mt-1 h-5 w-7 rounded border border-slate-200 object-cover"
+          />
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 truncate text-base font-semibold text-slate-900">
+              {panchinaCard && (
+                <span className="shrink-0">{g.ordine}.</span>
+              )}
+
+              <span className="truncate">{g.giocatore}</span>
+
+              {g.is_capitano && (
+                <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
+                  👑 C
+                </span>
+              )}
+
+              {g.is_vice && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                  V
+                </span>
+              )}
+            </div>
+
+            <div className="mt-0.5 text-sm text-slate-500">
+              {g.nazionale}
+
+              {g.avversario && (
+                <span className="ml-2 text-slate-400">
+                  vs {g.avversario}
+                </span>
+              )}
+
+              {dataPartita(g) && (
+                <span className="ml-2 text-slate-400">
+                  {dataPartita(g)}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-1 text-xs font-semibold text-slate-400">
+              {labelStatoPartita(g)}
+            </div>
+
+            {g.stato === "entrato" && (
+              <div className="mt-2 text-xs font-semibold text-green-700">
+                ↪ Entrato per {g.sostituisce}
+              </div>
+            )}
+
+            {g.stato === "ufficio" && (
+              <div className="mt-2 text-xs font-semibold text-red-700">
+                Voto d&apos;ufficio
+              </div>
+            )}
+
+            {nonUtilizzabile && (
+              <div className="mt-1 text-xs font-bold text-slate-500">
+                Non utilizzabile per bonus panchina
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div className="text-xl font-bold tabular-nums">
+            {fantapuntiDaMostrare(g)}
+          </div>
+
+          <div className="text-xs text-slate-500">
+            {votoLabelDaMostrare(g)}
+          </div>
+
+          <div className="text-xs text-slate-400">
+            {fantapuntiLabelDaMostrare(g)}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-100 p-4">
@@ -129,14 +310,10 @@ export default async function FormazioneCompetizioneDettaglioPage({
               : "bg-yellow-100 text-yellow-700"
           }`}
         >
-          {competizioneConclusa
-            ? "Competizione conclusa"
-            : "Competizione in corso"}
+          {competizioneConclusa ? "Competizione conclusa" : "Competizione in corso"}
         </div>
 
-        <div className="mt-1 text-slate-600">
-          Formazione {nomeCompetizione}
-        </div>
+        <div className="mt-1 text-slate-600">Formazione {nomeCompetizione}</div>
 
         <div className="mt-1 text-sm text-slate-500">
           Modulo dichiarato: {data?.[0]?.modulo_dichiarato ?? "—"}
@@ -247,60 +424,7 @@ export default async function FormazioneCompetizioneDettaglioPage({
 
         <div className="grid gap-2">
           {risultato.effettivi.map((g, index) => (
-            <div
-              key={`${g.giocatore_id}-${g.stato}-${index}`}
-              className={`flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ${
-                g.stato === "entrato"
-                  ? "border-2 border-green-300"
-                  : g.stato === "ufficio"
-                    ? "border-2 border-red-300"
-                    : ""
-              }`}
-            >
-              <div>
-                <div className="font-semibold">{g.giocatore}</div>
-
-                <div className="text-sm text-slate-500">
-                  {g.ruolo} - {g.nazionale}
-
-                  {g.avversario && (
-                    <span className="ml-2 text-slate-400">
-                      vs. {g.avversario}
-                    </span>
-                  )}
-
-                  {g.is_capitano && (
-                    <span className="ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
-                      Capitano
-                    </span>
-                  )}
-
-                  {g.is_vice && (
-                    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
-                      Vice
-                    </span>
-                  )}
-                </div>
-
-                {g.stato === "entrato" && (
-                  <div className="mt-1 text-xs font-bold text-green-700">
-                    ENTRATO PER {g.sostituisce}
-                  </div>
-                )}
-              </div>
-
-              <div className="text-right">
-                <div className="text-xl font-bold tabular-nums">
-                  {g.stato_giocatore === "da_giocare"
-                    ? "—"
-                    : g.fantapunti_calcolo}
-                </div>
-
-                <div className="text-xs text-slate-500">
-                  voto {g.stato_giocatore === "da_giocare" ? "—" : votoDaUsare(g)}
-                </div>
-              </div>
-            </div>
+            <RigaGiocatore key={`${g.giocatore_id}-${index}`} g={g} index={index} />
           ))}
         </div>
       </section>
@@ -351,36 +475,12 @@ export default async function FormazioneCompetizioneDettaglioPage({
 
         <div className="grid gap-2">
           {panchina.map((g, index) => (
-            <div
+            <RigaGiocatore
               key={`${g.giocatore_id}-${index}`}
-              className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm"
-            >
-              <div>
-                <div className="font-semibold">
-                  {g.ordine}. {g.giocatore}
-                </div>
-
-                <div className="text-sm text-slate-500">
-                  {g.ruolo} - {g.nazionale}
-
-                  {g.avversario && (
-                    <span className="ml-2 text-slate-400">
-                      vs. {g.avversario}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="text-right">
-                <div className="text-xl font-bold tabular-nums">
-                  {g.stato_giocatore === "da_giocare" ? "—" : g.fantapunti}
-                </div>
-
-                <div className="text-xs text-slate-500">
-                  voto {g.stato_giocatore === "da_giocare" ? "—" : votoDaUsare(g)}
-                </div>
-              </div>
-            </div>
+              g={g}
+              index={index}
+              panchinaCard
+            />
           ))}
         </div>
       </section>

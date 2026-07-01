@@ -2,12 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import { supabase } from "../lib/supabase";
-import {
-  labelCompetizione,
-  statoCompetizione,
-  getClassificaCompetizione,
-} from "../lib/fantagoat";
+import { labelCompetizione, statoCompetizione } from "../lib/fantagoat";
 import { COOKIE_PARTECIPANTE } from "../lib/fantagoat/sessione";
+import ClassificaLive from "../components/ClassificaLive";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,6 +18,41 @@ const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
 
 function chiaveCalendario(giornata: string, blocco: string) {
   return `${giornata}|${blocco}`;
+}
+
+function slugPartecipante(nome: string) {
+  return String(nome ?? "").toLowerCase().replaceAll(" ", "");
+}
+
+async function getClassificaLiveDaVClassifiche(codici: string[]) {
+  const { data } = await supabase
+    .from("v_classifiche")
+    .select("competizione, partecipante, punti")
+    .in("competizione", codici);
+
+  const map = new Map<string, { partecipante: string; punti: number }>();
+
+  for (const r of data ?? []) {
+    const slug = slugPartecipante(r.partecipante);
+    const old = map.get(slug);
+
+    map.set(slug, {
+      partecipante: r.partecipante,
+      punti: (old?.punti ?? 0) + Number(r.punti ?? 0),
+    });
+  }
+
+  return Array.from(map.entries())
+    .map(([slug, r]) => ({
+      slug,
+      partecipante: r.partecipante,
+      punti: Number(r.punti.toFixed(1)),
+    }))
+    .sort((a, b) => b.punti - a.punti)
+    .map((r, index) => ({
+      posizione: index + 1,
+      ...r,
+    }));
 }
 
 export default async function Home() {
@@ -116,83 +148,48 @@ export default async function Home() {
   }
 
   const { data: generaleFase1 } = await supabase
-  .from("v_classifica_generale_fase1")
-  .select("partecipante,punti")
-  .order("punti", { ascending: false });
+    .from("v_classifica_generale_fase1")
+    .select("partecipante,punti")
+    .order("punti", { ascending: false });
 
-const generale = (generaleFase1 ?? []).map((r, index) => ({
-  posizione: index + 1,
-  partecipante: r.partecipante,
-  punti: Number(r.punti),
-}));
+  const generale = (generaleFase1 ?? []).map((r, index) => ({
+    posizione: index + 1,
+    partecipante: r.partecipante,
+    punti: Number(r.punti),
+  }));
 
-  const competizioneLive = Array.from(blocchi.values()).find((b) => {
-    const c = competizioni?.find(
-      (x) => x.giornata === b.giornata && x.blocco === b.blocco
-    );
+  const competizioneLive =
+    Array.from(blocchi.values()).find((b) => {
+      const c = competizioni?.find(
+        (x) => x.giornata === b.giornata && x.blocco === b.blocco
+      );
 
-    return c && statoCompetizione(c.conclusa, b.primaPartita, now) === "LIVE";
-  });
+      return c && statoCompetizione(c.conclusa, b.primaPartita, now) === "LIVE";
+    }) ?? {
+      giornata: "Sedicesimi",
+      blocco: "1-8",
+      primaPartita: new Date(),
+      deadline: new Date(),
+    };
 
-  let classificaLive: Awaited<ReturnType<typeof getClassificaCompetizione>> =
-    [];
+  const codiciClassificaLive =
+    competizioneLive.giornata === "Sedicesimi"
+      ? ["16ALTA", "16BASSA"]
+      : competizioneLive.giornata === "Ottavi"
+        ? ["8ALTA", "8BASSA"]
+        : [
+            CODICE_COMPETIZIONE_BY_CALENDARIO[
+              chiaveCalendario(competizioneLive.giornata, competizioneLive.blocco)
+            ],
+          ].filter(Boolean);
 
-  if (competizioneLive?.giornata === "Sedicesimi") {
-    const alta = await getClassificaCompetizione(
-      supabase,
-      "Sedicesimi",
-      "1-8",
-      false
-    );
+  const classificaLive = await getClassificaLiveDaVClassifiche(
+    codiciClassificaLive
+  );
 
-    const bassa = await getClassificaCompetizione(
-      supabase,
-      "Sedicesimi",
-      "9-16",
-      false
-    );
-
-    const map = new Map<string, { partecipante: string; punti: number }>();
-
-    for (const r of alta) {
-      map.set(r.partecipante, {
-        partecipante: r.partecipante,
-        punti: r.punti,
-      });
-    }
-
-    for (const r of bassa) {
-      const old = map.get(r.partecipante);
-
-      if (old) {
-        old.punti += r.punti;
-      } else {
-        map.set(r.partecipante, {
-          partecipante: r.partecipante,
-          punti: r.punti,
-        });
-      }
-    }
-
-    classificaLive = Array.from(map.values())
-      .sort((a, b) => b.punti - a.punti)
-      .map((r, i) => ({
-        posizione: i + 1,
-        partecipante: r.partecipante,
-        punti: r.punti,
-      }));
-  } else if (competizioneLive) {
-    classificaLive = await getClassificaCompetizione(
-      supabase,
-      competizioneLive.giornata,
-      competizioneLive.blocco,
-      false
-    );
-  }
-
-  const partiteLiveFase = competizioneLive
-    ? (partite ?? []).filter((p) => p.giornata === competizioneLive.giornata)
-    : [];
+  const partiteLiveFase = (partite ?? []).filter(
+    (p) => p.giornata === competizioneLive.giornata
+  );
 
   const partiteTotaliLive = new Set(partiteLiveFase.map((p) => p.partita)).size;
 
@@ -307,7 +304,9 @@ const generale = (generaleFase1 ?? []).map((r, index) => ({
                   }`}
                 >
                   <Link
-                    href={`/partecipanti/${encodeURIComponent(r.partecipante)}`}
+                    href={`/partecipanti/${encodeURIComponent(
+                      slugPartecipante(r.partecipante)
+                    )}`}
                     className="font-semibold hover:text-blue-600"
                   >
                     {r.posizione}. {r.partecipante}
@@ -328,98 +327,8 @@ const generale = (generaleFase1 ?? []).map((r, index) => ({
             </a>
           </section>
 
-          <section className="rounded-2xl bg-white p-4 shadow">
-            <h3 className="mb-2 text-xl font-bold">
-              {competizioneLive?.giornata
-                ? `Classifica Live ${competizioneLive.giornata}`
-                : "Classifica Live"}
-            </h3>
-
-            {competizioneLive ? (
-              <>
-                <div className="text-slate-600">
-                  {competizioneLive.giornata === "Sedicesimi"
-                    ? "Sedicesimi 1-16"
-                    : labelCompetizione(
-                        competizioneLive.giornata,
-                        competizioneLive.blocco
-                      )}
-                </div>
-
-                <div className="mb-3 text-xs text-slate-500">
-                  Aggiornata a {partiteGiocateLive} partite su{" "}
-                  {partiteTotaliLive}
-                  {partiteMancantiLive > 0
-                    ? ` · Mancano ${partiteMancantiLive} partite`
-                    : " · Fase completata"}
-                </div>
-
-                <div className="grid gap-2">
-                  {classificaLive.slice(0, 4).map((r) => (
-                    <div
-                      key={r.partecipante}
-                      className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
-                    >
-                      <div>
-                        <div className="font-semibold">
-                          {r.posizione}. {r.partecipante}
-                        </div>
-
-                        {competizioneLive.giornata === "Sedicesimi" ? (
-                          <div className="mt-1 flex gap-2">
-                            <Link
-  href={`/formazioni-competizione/16ALTA/dettaglio?partecipante=${encodeURIComponent(
-    r.partecipante
-  )}`}
-  className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700"
->
-  1-8
-</Link>
-
-                            <Link
-  href={`/formazioni-competizione/16BASSA/dettaglio?partecipante=${encodeURIComponent(
-    r.partecipante
-  )}`}
-  className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
->
-  9-16
-</Link>
-                          </div>
-                        ) : (
-                          <Link
-                            href={`/formazioni/${encodeURIComponent(
-                              r.partecipante
-                            )}/${competizioneLive.giornata}/${
-                              competizioneLive.blocco
-                            }`}
-                            className="text-xs text-blue-600"
-                          >
-                            Vedi formazione →
-                          </Link>
-                        )}
-                      </div>
-
-                      <div className="text-xl font-bold tabular-nums">
-                        {r.punti}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <a
-                  href="/classifiche"
-                  className="mt-4 block text-sm font-semibold text-blue-600"
-                >
-                  → Tutte le classifiche
-                </a>
-              </>
-            ) : (
-              <div className="text-slate-600">
-                Nessuna giornata live in corso.
-              </div>
-            )}
-          </section>
-        </div>
+          <ClassificaLive />
+           </div>
       </section>
 
       <section>

@@ -13,32 +13,110 @@ const moduliValidi = [
   "5-4-1",
 ];
 
+type StatoCalcolato =
+  | "PARTITA_DA_GIOCARE"
+  | "PARTITA_IN_CORSO"
+  | "IN_ATTESA_DATI"
+  | "HA_VOTO"
+  | "SENZA_VOTO";
+
 export function numero(v: any) {
   return Number(v ?? 0);
 }
 
+function votoBase(g: any) {
+  return numero(g.voto_live ?? g.voto);
+}
+
+function fantapuntiBase(g: any) {
+  return numero(g.fantapunti_live ?? g.fantapunti);
+}
+
+function haZeroZero(g: any) {
+  return votoBase(g) === 0 && fantapuntiBase(g) === 0;
+}
+
+function chiavePartita(g: any) {
+  const nazionale = String(g.nazionale ?? "").trim();
+  const avversario = String(g.avversario ?? "").trim();
+
+  return [nazionale, avversario].sort().join("-");
+}
+
+function partiteChiuse(rows: any[]) {
+  const set = new Set<string>();
+
+  for (const g of rows) {
+    if (fantapuntiBase(g) > 0) {
+      set.add(chiavePartita(g));
+    }
+  }
+
+  return set;
+}
+
+function statoCalcolatoGiocatore(
+  g: any,
+  partiteConDati: Set<string>
+): StatoCalcolato {
+  const stato = String(g.stato_giocatore ?? "");
+
+  if (stato === "da_giocare" || stato === "partita_da_giocare") {
+    return "PARTITA_DA_GIOCARE";
+  }
+
+  if (stato === "in_corso" || stato === "in_campo") {
+    return "PARTITA_IN_CORSO";
+  }
+
+  if (stato === "in_attesa_dati" || stato === "in_attesa_voto") {
+    return "IN_ATTESA_DATI";
+  }
+
+  if (haZeroZero(g)) {
+    return partiteConDati.has(chiavePartita(g))
+      ? "SENZA_VOTO"
+      : "IN_ATTESA_DATI";
+  }
+
+  return "HA_VOTO";
+}
+
+function arricchisciConStatoCalcolato(rows: any[]) {
+  const chiuse = partiteChiuse(rows);
+
+  return rows.map((g) => ({
+    ...g,
+    stato_calcolato: statoCalcolatoGiocatore(g, chiuse),
+  }));
+}
+
 export function votoDaUsare(g: any) {
   if (
-    g.stato_giocatore === "partita_da_giocare" ||
-    g.stato_giocatore === "in_campo" ||
-    g.stato_giocatore === "in_attesa_voto"
+    g.stato_calcolato === "PARTITA_DA_GIOCARE" ||
+    g.stato_calcolato === "PARTITA_IN_CORSO" ||
+    g.stato_calcolato === "IN_ATTESA_DATI"
   ) {
     return 6;
   }
 
-  return numero(g.voto_live ?? g.voto);
+  if (g.stato === "ufficio") {
+    return g.ruolo === "P" ? 3 : 4;
+  }
+
+  return votoBase(g);
 }
 
 export function haVoto(g: any) {
-  return g.stato_giocatore === "ha_voto";
+  return g.stato_calcolato === "HA_VOTO";
 }
 
 function puoEntrareLive(g: any) {
   return (
-    g.stato_giocatore === "ha_voto" ||
-    g.stato_giocatore === "partita_da_giocare" ||
-    g.stato_giocatore === "in_campo" ||
-    g.stato_giocatore === "in_attesa_voto"
+    g.stato_calcolato === "HA_VOTO" ||
+    g.stato_calcolato === "PARTITA_DA_GIOCARE" ||
+    g.stato_calcolato === "PARTITA_IN_CORSO" ||
+    g.stato_calcolato === "IN_ATTESA_DATI"
   );
 }
 
@@ -56,25 +134,61 @@ function moduloValido(giocatori: any[]) {
 
 function fantapuntiDaUsare(g: any) {
   if (
-    g.stato_giocatore === "partita_da_giocare" ||
-    g.stato_giocatore === "in_campo" ||
-    g.stato_giocatore === "in_attesa_voto"
+    g.stato_calcolato === "PARTITA_DA_GIOCARE" ||
+    g.stato_calcolato === "PARTITA_IN_CORSO" ||
+    g.stato_calcolato === "IN_ATTESA_DATI"
   ) {
     return 6;
   }
 
-  return numero(g.fantapunti_live ?? g.fantapunti);
+  if (g.stato === "ufficio") {
+    return g.ruolo === "P" ? 3 : 4;
+  }
+
+  if (g.stato_calcolato === "SENZA_VOTO") {
+    return 0;
+  }
+
+  return fantapuntiBase(g);
 }
 
 export function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
-  const effettivi = titolari.map((g) => ({
+  const titolariNormalizzati = titolari.map((g) => {
+    if (g.stato_calcolato === "SENZA_VOTO") {
+      return {
+        ...g,
+        stato_giocatore: "non_ha_giocato",
+        da_sostituire: true,
+      };
+    }
+
+    return g;
+  });
+
+  const panchinaNormalizzata = panchina.map((g) => {
+    if (g.stato_calcolato === "SENZA_VOTO") {
+      return {
+        ...g,
+        fantapunti_calcolo: 0,
+        stato: "panchina_non_utilizzabile",
+        non_utilizzabile_bonus_panchina: true,
+      };
+    }
+
+    return {
+      ...g,
+      fantapunti_calcolo: fantapuntiDaUsare(g),
+    };
+  });
+
+  const effettivi = titolariNormalizzati.map((g) => ({
     ...g,
     fantapunti_calcolo: fantapuntiDaUsare(g),
     stato: "titolare",
     sostituisce: null,
   }));
 
-  const panchinaOrdinata = [...panchina].sort(
+  const panchinaOrdinata = [...panchinaNormalizzata].sort(
     (a, b) => numero(a.ordine) - numero(b.ordine)
   );
 
@@ -82,7 +196,7 @@ export function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
   const sostituzioni: any[] = [];
 
   const titolariDaSostituire = effettivi
-    .filter((g) => g.stato_giocatore === "non_ha_giocato")
+    .filter((g) => g.stato_giocatore === "non_ha_giocato" || g.da_sostituire)
     .sort((a, b) => numero(a.ordine) - numero(b.ordine));
 
   for (const titolare of titolariDaSostituire) {
@@ -100,12 +214,14 @@ export function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
           (p) =>
             p.ruolo === "P" &&
             puoEntrareLive(p) &&
+            !p.non_utilizzabile_bonus_panchina &&
             !usati.has(p.giocatore_id)
         );
       } else {
         for (const p of panchinaOrdinata) {
           if (p.ruolo === "P") continue;
           if (!puoEntrareLive(p)) continue;
+          if (p.non_utilizzabile_bonus_panchina) continue;
           if (usati.has(p.giocatore_id)) continue;
 
           const prova = [...effettivi];
@@ -154,6 +270,7 @@ export function calcolaFormazioneEffettiva(titolari: any[], panchina: any[]) {
 
   return {
     effettivi,
+    panchina: panchinaNormalizzata,
     sostituzioni,
     moduloFinale: moduloDaGiocatori(effettivi),
     totaleGiocatori: effettivi.reduce(
@@ -188,6 +305,7 @@ export function calcolaBonusPanchina(panchina: any[], sostituzioni: any[]) {
 
   return panchina
     .filter((g) => !idsEntrati.has(g.giocatore_id))
+    .filter((g) => !g.non_utilizzabile_bonus_panchina)
     .reduce((sum, g) => {
       if (!haVoto(g)) return sum;
       return sum + (votoDaUsare(g) - 6);
@@ -277,16 +395,18 @@ export function calcolaDettaglioFormazione(
   rows: any[],
   continuita?: ContinuitaCapitano
 ) {
-  const titolari = rows.filter((g) => g.tipo === "Titolare");
-  const panchina = rows.filter((g) => g.tipo === "Panchina");
+  const rowsConStato = arricchisciConStatoCalcolato(rows);
+
+  const titolari = rowsConStato.filter((g) => g.tipo === "Titolare");
+  const panchina = rowsConStato.filter((g) => g.tipo === "Panchina");
 
   const risultato = calcolaFormazioneEffettiva(titolari, panchina);
 
   const bonusCapitano = calcolaVotoCapitano(risultato.effettivi);
   const bonusPanchina = calcolaBonusPanchina(
-  panchina,
-  risultato.sostituzioni
-);
+    risultato.panchina,
+    risultato.sostituzioni
+  );
   const modificatoreDifesa = calcolaModDifesa(risultato.effettivi);
   const modificatoreCentrocampo = calcolaModCentrocampo(risultato.effettivi);
   const bonusModulo = calcolaBonusModulo(
@@ -295,9 +415,10 @@ export function calcolaDettaglioFormazione(
   );
 
   const continuitaCapitano = calcolaContinuitaCapitano(
-  risultato.effettivi,
-  continuita
-);
+    risultato.effettivi,
+    continuita
+  );
+
   const moltiplicatore = numero(rows?.[0]?.moltiplicatore ?? 1);
 
   const totalePrimaMoltiplicatore =
