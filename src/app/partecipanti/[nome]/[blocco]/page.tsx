@@ -64,9 +64,9 @@ export default async function RosaBloccoPage({
       </a>
 
       <header className="mt-5 mb-4">
-        <h1 className="text-8xl font-bold leading-none tracking-tight">
-          {partecipante}
-        </h1>
+        <h1 className="text-5xl md:text-7xl font-bold leading-none tracking-tight break-words">
+  {partecipante}
+</h1>
 
         <div className="text-xl text-slate-600 mt-3">
           Rosa {bloccoLabel}

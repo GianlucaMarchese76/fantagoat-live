@@ -36,7 +36,12 @@ export default async function LoginPage({
           </p>
         </div>
 
-        <form method="post" action="/api/login" className="mt-6 grid gap-3">
+        <form
+          method="post"
+          action="/api/login"
+          autoComplete="on"
+          className="mt-6 grid gap-3"
+        >
           <input
             type="hidden"
             name="redirect"
@@ -47,6 +52,7 @@ export default async function LoginPage({
 
           <select
             name="slug"
+            autoComplete="username"
             required
             className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-white"
           >
@@ -62,6 +68,7 @@ export default async function LoginPage({
           <input
             name="codice"
             type="password"
+            autoComplete="current-password"
             placeholder="Codice personale"
             required
             className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-white"
@@ -74,11 +81,17 @@ export default async function LoginPage({
 
         <div className="my-6 border-t border-slate-700" />
 
-        <form method="post" action="/api/iscriviti" className="grid gap-3">
+        <form
+          method="post"
+          action="/api/iscriviti"
+          autoComplete="off"
+          className="grid gap-3"
+        >
           <h2 className="text-lg font-black">Nuovo partecipante</h2>
 
           <input
             name="nome"
+            autoComplete="off"
             placeholder="Nickname"
             required
             className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-white"
@@ -87,6 +100,7 @@ export default async function LoginPage({
           <input
             name="codice"
             type="password"
+            autoComplete="new-password"
             placeholder="Scegli codice personale"
             required
             className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-white"

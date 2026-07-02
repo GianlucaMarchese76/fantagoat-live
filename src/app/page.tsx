@@ -420,7 +420,7 @@ console.log({
 
           <div className="flex items-center justify-between">
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">
-              Versione 1.0
+              Versione 2.0 (01/07/2026)
             </span>
 
             <span className="text-sm font-semibold text-blue-600">
