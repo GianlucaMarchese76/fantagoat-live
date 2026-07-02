@@ -7,12 +7,21 @@ export default function CountdownDeadline({
 }: {
   deadline: string;
 }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    setNow(Date.now());
+
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
     return () => clearInterval(timer);
   }, []);
+
+  if (now === null) {
+    return <span>--:--:--</span>;
+  }
 
   const target = new Date(deadline).getTime();
   const diff = target - now;

@@ -55,20 +55,20 @@ export default async function PartecipantePage({
         <h1 className="text-4xl font-bold">{partecipante}</h1>
 
         <div className="mt-3 flex gap-4 text-sm">
-          <a
-            href={`/partecipanti/${encodeURIComponent(slug)}/AF`}
-            className="font-semibold text-blue-600"
-          >
-            Rosa A-F
-          </a>
+  <Link
+    href={`/partecipanti/${encodeURIComponent(partecipante)}/AF`}
+    className="font-semibold text-blue-600 hover:underline"
+  >
+    Rosa A-F
+  </Link>
 
-          <a
-            href={`/partecipanti/${encodeURIComponent(slug)}/GL`}
-            className="font-semibold text-blue-600"
-          >
-            Rosa G-L
-          </a>
-        </div>
+  <Link
+    href={`/partecipanti/${encodeURIComponent(partecipante)}/GL`}
+    className="font-semibold text-blue-600 hover:underline"
+  >
+    Rosa G-L
+  </Link>
+</div>
       </header>
 
       <section className="rounded-2xl bg-white p-4 shadow">

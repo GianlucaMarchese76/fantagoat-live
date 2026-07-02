@@ -174,7 +174,7 @@ let testoSchiera = "Accedi per schierare";
 
     testoSchiera = rosaCompleta
       ? "Vai alla tua formazione"
-      : "Crea prima la tua rosa";
+      : "Crea la tua rosa e schiera la formazione";
   }
 
   const { data: generaleFase1 } = await supabase
