@@ -98,7 +98,7 @@ export default function RuoliBar({
       </div>
 
       <p className="mt-2 text-xs text-slate-400">
-        Max {maxPerNazionale} giocatori per nazionale · Jolly valido solo per D, C o A
+        Max {maxPerNazionale} giocatori per nazionale · Il Jolly è D, C o A
       </p>
     </section>
   );

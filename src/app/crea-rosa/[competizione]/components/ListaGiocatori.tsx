@@ -29,7 +29,7 @@ export default function ListaGiocatori({
   rimuoviGiocatore: (id: number) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-700/70 bg-[#101a2d] p-3">
+    <section className="w-full max-w-full overflow-hidden rounded-2xl border border-slate-700/70 bg-[#101a2d] p-3">
 
       <div className="mb-2 grid gap-2 md:grid-cols-[1fr_180px]">
         <input

@@ -68,7 +68,7 @@ export default function RosaPanel({
       <div className="mt-4 space-y-2">
         {rosaBloccata ? (
           <div className="rounded-lg border border-amber-700/70 bg-amber-950/40 p-2 text-sm font-bold text-amber-200">
-            🔒 Rosa bloccata: la competizione è iniziata.
+            🔒 Rosa bloccata.
           </div>
         ) : (
           <>

@@ -217,14 +217,14 @@ export default async function FormazionePage({
               </div>
 
               <div className="text-right">
-                <div className="text-xl font-bold tabular-nums">
-                  {g.fantapunti_calcolo}
-                </div>
+  <div className="text-xl font-bold tabular-nums text-slate-400">
+    {g.fantapunti}
+  </div>
 
-                <div className="text-xs text-slate-500">
-                  voto {votoDaUsare(g)}
-                </div>
-              </div>
+  <div className="text-xs font-bold text-slate-700">
+    voto {votoDaUsare(g)}
+  </div>
+</div>
             </div>
           ))}
         </div>

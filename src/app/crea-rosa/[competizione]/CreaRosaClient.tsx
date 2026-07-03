@@ -210,11 +210,11 @@ export default function CreaRosaClient({
 
   async function handleConfermaRosa() {
     if (rosaBloccata) {
-  setMessaggio("La rosa è bloccata e non può più essere modificata.");
+  setMessaggio("La rosa non può essere modificata.");
   return;
 }
   if (rosa.length !== LIMITE_GIOCATORI) {
-    setMessaggio("La rosa deve contenere esattamente 16 giocatori.");
+    setMessaggio("La rosa deve contenere 16 giocatori.");
     return;
   }
 
@@ -229,7 +229,7 @@ export default function CreaRosaClient({
   }
 
   if (jollyUsati(contatoriRuoli) !== 1) {
-    setMessaggio("Rosa non valida: devi usare esattamente 1 jolly D/C/A.");
+    setMessaggio("Rosa non valida: devi usare 1 jolly D/C/A.");
     return;
   }
 
@@ -347,7 +347,7 @@ if (!righeFormazione.some((r) => r.is_vice)) {
 
   return (
     <div className="min-h-screen bg-[#08111d] text-white">
-      <div className="mx-auto max-w-7xl px-3 py-4">
+      <div className="mx-auto w-full max-w-7xl overflow-hidden px-3 py-4">
         <a href="/" className="mb-3 inline-block text-sm text-slate-300">
   ← Home
 </a>
@@ -355,11 +355,11 @@ if (!righeFormazione.some((r) => r.is_vice)) {
 
         {rosaBloccata && (
   <div className="mt-3 rounded-xl border border-amber-600 bg-amber-950/40 p-3 text-amber-200">
-    La rosa di questa competizione è bloccata e non può più essere modificata.
+    La rosa non può essere modificata.
   </div>
 )}
 
-<main className="grid gap-3">
+<main className="grid w-full max-w-full gap-3 overflow-hidden">
           <RosaPanel
   rosa={rosa}
   rosaBloccata={rosaBloccata}
