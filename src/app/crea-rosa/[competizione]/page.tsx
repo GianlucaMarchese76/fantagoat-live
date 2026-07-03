@@ -159,7 +159,6 @@ const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
   const rosaBloccata =
   competizioneData.codice === "16ALTA" ||
   competizioneData.codice === "16BASSA" ||
-  competizioneData.codice === "8ALTA";
       competizioneData.codice === "8BASSA";
 
     return (
