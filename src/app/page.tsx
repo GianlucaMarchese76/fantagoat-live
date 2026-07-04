@@ -408,7 +408,7 @@ console.log({
           className="block rounded-2xl bg-white p-5 shadow transition hover:shadow-lg"
         >
           <div className="mb-2 text-2xl font-bold">
-            📘 Regolamento FantaGOAT 2026
+            📘 Regolamento
           </div>
 
           <div className="mb-4 text-slate-600">

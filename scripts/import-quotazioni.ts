@@ -67,7 +67,15 @@ async function main() {
   for (const row of rows) {
     const nome = String(row["Name"] ?? "").trim();
     const nazionale = String(row["Team"] ?? "").trim();
-    const quotazione = Number(row["Quotation"]);
+    const quotazioneRaw = row["Quotation"];
+
+const quotazione = Math.round(
+  Number(
+    String(quotazioneRaw)
+      .trim()
+      .replace(",", ".")
+  )
+);
 
     if (!nome || !nazionale || isNaN(quotazione)) continue;
 

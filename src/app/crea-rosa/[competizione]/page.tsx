@@ -123,18 +123,25 @@ const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
       : { data: [] };
 
   const giocatoriNormalizzati =
-    giocatori?.map((g) => ({
-      id: g.id,
-      nome: g.nome,
-      ruolo: g.ruolo,
-      nazionale: g.nazionale,
-      avversaria:
-  avversariByNazionale.get(String(g.nazionale ?? "").trim().toUpperCase()) ??
-  undefined,
-      quotazione_sedicesimi: Number(
+  giocatori
+    ?.map((g) => {
+      const quotazione = Number(
         (g as Record<string, unknown>)[campoQuotazione] ?? 0
-      ),
-    })) ?? [];
+      );
+
+      return {
+        id: g.id,
+        nome: g.nome,
+        ruolo: g.ruolo,
+        nazionale: g.nazionale,
+        avversaria:
+          avversariByNazionale.get(
+            String(g.nazionale ?? "").trim().toUpperCase()
+          ) ?? undefined,
+        quotazione_sedicesimi: quotazione,
+      };
+    })
+    .filter((g) => g.quotazione_sedicesimi > 0) ?? [];
 
   const { data: rosaSalvata } = await supabase
     .from("rose_competizione")
@@ -159,7 +166,7 @@ const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
   const rosaBloccata =
   competizioneData.codice === "16ALTA" ||
   competizioneData.codice === "16BASSA" ||
-      competizioneData.codice === "8BASSA";
+      competizioneData.codice === "8ALTA";
 
     return (
     <CreaRosaClient
