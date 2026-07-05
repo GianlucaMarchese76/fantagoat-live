@@ -168,7 +168,9 @@ function ClassificaCard({
               }`}
             >
               <Link
-                href={`/partecipanti/${encodeURIComponent(r.slug)}`}
+                href={`/partecipanti/${encodeURIComponent(
+  String(r.slug ?? "").toLowerCase()
+)}`}
                 className="font-semibold hover:text-blue-600"
               >
                 {r.posizione}. {r.partecipante}
