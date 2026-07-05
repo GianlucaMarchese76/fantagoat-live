@@ -3,6 +3,7 @@ dotenv.config({ path: ".env.local" });
 
 import { createClient } from "@supabase/supabase-js";
 import { calcolaDettaglioFormazione } from "../src/lib/fantagoat/calcoloFormazioneFase2";
+import { competizioniDesignanti } from "../src/lib/fantagoat/continuitaCapitano";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -149,6 +150,30 @@ async function calcolaFase1(codice: string) {
   await salvaClassifica(codice, risultati);
 }
 
+async function getContinuitaCapitano(codice: string, partecipante_id: string) {
+  const codiciDesignanti = competizioniDesignanti(codice);
+
+  if (codiciDesignanti.length === 0) {
+    return undefined;
+  }
+
+  const { data: designati, error } = await supabase
+    .from("v_formazioni_competizione_live")
+    .select("giocatore_id,is_capitano,is_vice,competizione_codice")
+    .eq("partecipante_id", partecipante_id)
+    .in("competizione_codice", codiciDesignanti)
+    .or("is_capitano.eq.true,is_vice.eq.true");
+
+  if (error) throw error;
+
+  return {
+    capitaniPrecedenti:
+      designati?.filter((g) => g.is_capitano).map((g) => g.giocatore_id) ?? [],
+    vicePrecedenti:
+      designati?.filter((g) => g.is_vice).map((g) => g.giocatore_id) ?? [],
+  };
+}
+
 async function calcolaFase2(codice: string) {
   console.log(`\n🏆 Calcolo ${codice}`);
 
@@ -175,8 +200,12 @@ async function calcolaFase2(codice: string) {
   const righeRisultati: any[] = [];
 
   for (const [partecipante_id, righe] of gruppi.entries()) {
-    const dettaglio = calcolaDettaglioFormazione(righe);
+    const continuitaCapitano = await getContinuitaCapitano(
+      codice,
+      partecipante_id
+    );
 
+    const dettaglio = calcolaDettaglioFormazione(righe, continuitaCapitano);
     const totale = Number(dettaglio.totaleFinale.toFixed(1));
 
     righeClassifica.push({

@@ -17,6 +17,15 @@ const ORDINE_COMPETIZIONI = [
   "8BASSA",
 ];
 
+const COMPETIZIONI_FASE_1 = [
+  "G1AF",
+  "G1GL",
+  "G2AF",
+  "G2GL",
+  "G3AF",
+  "G3GL",
+];
+
 const COMPETIZIONI_SEDICESIMI = ["16ALTA", "16BASSA"];
 const COMPETIZIONI_OTTAVI = ["8ALTA", "8BASSA"];
 
@@ -30,17 +39,27 @@ function formatPunti(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function getFormazioneHref(partecipanteSlug: string, competizione: string) {
+function sommaPunti(righe: RigaClassifica[], competizioni: string[]) {
+  return righe
+    .filter((r) => competizioni.includes(r.competizione))
+    .reduce((sum, r) => sum + Number(r.punti ?? 0), 0);
+}
+
+function getFormazioneHref(
+  partecipanteNome: string,
+  partecipanteSlug: string,
+  competizione: string
+) {
   if (competizione.startsWith("G")) {
     const giornata = competizione.slice(0, 2);
     const blocco = competizione.slice(2);
 
     return `/formazioni/${encodeURIComponent(
-      partecipanteSlug
+      partecipanteNome
     )}/${giornata}/${blocco}`;
   }
 
-  return `/formazioni-competizione/${competizione}?partecipante=${encodeURIComponent(
+  return `/formazioni-competizione/${competizione}/dettaglio?partecipante=${encodeURIComponent(
     partecipanteSlug
   )}`;
 }
@@ -106,18 +125,10 @@ export default async function PartecipantePage({
         ORDINE_COMPETIZIONI.indexOf(b.competizione)
     );
 
-  const totaleGenerale = risultati.reduce(
-    (sum, r) => sum + Number(r.punti ?? 0),
-    0
-  );
-
-  const totaleSedicesimi = risultati
-    .filter((r) => COMPETIZIONI_SEDICESIMI.includes(r.competizione))
-    .reduce((sum, r) => sum + Number(r.punti ?? 0), 0);
-
-  const totaleOttavi = risultati
-    .filter((r) => COMPETIZIONI_OTTAVI.includes(r.competizione))
-    .reduce((sum, r) => sum + Number(r.punti ?? 0), 0);
+  const totaleFase1 = sommaPunti(risultati, COMPETIZIONI_FASE_1);
+  const totaleSedicesimi = sommaPunti(risultati, COMPETIZIONI_SEDICESIMI);
+  const totaleOttavi = sommaPunti(risultati, COMPETIZIONI_OTTAVI);
+  const totaleGenerale = totaleFase1 + totaleSedicesimi + totaleOttavi;
 
   return (
     <main className="min-h-screen bg-slate-100 p-4">
@@ -145,13 +156,22 @@ export default async function PartecipantePage({
         </div>
       </header>
 
-      <section className="mb-4 grid gap-3 md:grid-cols-3">
+      <section className="mb-4 grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl bg-white p-4 shadow">
           <div className="text-sm font-semibold text-slate-500">
             Classifica Generale
           </div>
           <div className="mt-2 text-3xl font-black tabular-nums">
             {formatPunti(totaleGenerale)}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-4 shadow">
+          <div className="text-sm font-semibold text-slate-500">
+            Prima fase
+          </div>
+          <div className="mt-2 text-3xl font-black tabular-nums">
+            {formatPunti(totaleFase1)}
           </div>
         </div>
 
@@ -181,7 +201,11 @@ export default async function PartecipantePage({
           {risultati.map((r) => (
             <Link
               key={r.competizione}
-              href={getFormazioneHref(partecipante.slug, r.competizione)}
+              href={getFormazioneHref(
+  partecipante.nome,
+  partecipante.slug,
+  r.competizione
+)}
               className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
             >
               <div>
