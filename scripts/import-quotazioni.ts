@@ -23,6 +23,12 @@ const CAMPO_QUOTAZIONE: Record<string, string> = {
   "FINALE": "quotazione_finale",
 };
 
+function parseQuota(value: unknown) {
+  return Math.round(
+    Number(String(value ?? "").trim().replace(",", "."))
+  );
+}
+
 async function main() {
   console.log("🚀 Avvio import...");
 
@@ -32,14 +38,13 @@ async function main() {
     throw new Error("Specificare la competizione");
   }
 
-  console.log("Competizione:", competizione);
-
   const campo = CAMPO_QUOTAZIONE[competizione];
 
   if (!campo) {
     throw new Error("Competizione non riconosciuta");
   }
 
+  console.log("Competizione:", competizione);
   console.log("Campo:", campo);
 
   const filePath = path.join(
@@ -52,60 +57,72 @@ async function main() {
   console.log("File:", filePath);
 
   const workbook = XLSX.readFile(filePath);
-
-  console.log("Workbook aperto");
-
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
   const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
 
   console.log(`Righe lette: ${rows.length}`);
 
   let aggiornati = 0;
   let nonTrovati = 0;
+  let saltati = 0;
+  let ambigui = 0;
 
   for (const row of rows) {
     const nome = String(row["Name"] ?? "").trim();
     const nazionale = String(row["Team"] ?? "").trim();
-    const quotazioneRaw = row["Quotation"];
+    const ruolo = String(row["Role"] ?? row["Ruolo"] ?? row["Position"] ?? "").trim();
+    const quotazione = parseQuota(row["Quotation"]);
 
-const quotazione = Math.round(
-  Number(
-    String(quotazioneRaw)
-      .trim()
-      .replace(",", ".")
-  )
-);
+    if (!nome || !nazionale || isNaN(quotazione) || quotazione <= 0) {
+      saltati++;
+      continue;
+    }
 
-    if (!nome || !nazionale || isNaN(quotazione)) continue;
-
-    console.log(`${nome} (${nazionale}) -> ${quotazione}`);
-
-    const { data, error } = await supabase
+    let query = supabase
       .from("giocatori")
       .update({
         [campo]: quotazione,
       })
       .eq("nome", nome)
-      .eq("nazionale", nazionale)
-      .select();
+      .eq("nazionale", nazionale);
+
+    if (ruolo) {
+      query = query.eq("ruolo", ruolo);
+    }
+
+    const { data, error } = await query.select("id,nome,nazionale,ruolo");
 
     if (error) {
-      console.error(error);
+      console.error("Errore:", nome, nazionale, ruolo, error);
       continue;
     }
 
     if (!data || data.length === 0) {
       nonTrovati++;
+      console.log(`❌ Non trovato: ${nome} (${nazionale}) ${ruolo || ""}`);
       continue;
     }
 
-    aggiornati++;
+    if (data.length > 1) {
+      ambigui++;
+      console.log(
+        `⚠️ Ambiguo: ${nome} (${nazionale}) ${ruolo || ""} -> aggiornati ${data.length} record`
+      );
+    }
+
+    aggiornati += data.length;
+
+    console.log(
+      `✅ ${nome} (${nazionale}) ${ruolo || ""} -> ${quotazione}`
+    );
   }
 
   console.log("---------------------------");
+  console.log("Righe Excel:", rows.length);
   console.log("Aggiornati:", aggiornati);
   console.log("Non trovati:", nonTrovati);
+  console.log("Ambigui:", ambigui);
+  console.log("Saltati:", saltati);
   console.log("Import terminato");
 }
 
