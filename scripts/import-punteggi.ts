@@ -16,18 +16,24 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 function parseFileName(filePath: string) {
   const base = path.basename(filePath, path.extname(filePath));
+  const baseNorm = base.toLowerCase();
+
   const match = base.match(/^(G\d+)([A-Z]+)$/);
 
   if (match) {
     return { giornata: match[1], blocco: match[2] as string | null };
   }
 
-  if (base.toLowerCase() === "sedicesimi") {
+  if (baseNorm === "sedicesimi") {
     return { giornata: "sedicesimi", blocco: null as string | null };
   }
 
+  if (baseNorm === "ottavi") {
+    return { giornata: "ottavi", blocco: null as string | null };
+  }
+
   throw new Error(
-    `Nome file non valido: ${base}. Usa formato tipo G2AF.xlsx oppure sedicesimi.xlsx`
+    `Nome file non valido: ${base}. Usa formato tipo G2AF.xlsx, sedicesimi.xlsx oppure ottavi.xlsx`
   );
 }
 
@@ -65,7 +71,7 @@ function makePlayerKey(nome: string, ruolo: string, nazionale: string) {
   return `${nome}|${ruolo}|${nazionale}`.toLowerCase();
 }
 
-async function creaMappaBlocchiSedicesimi(rows: any[]) {
+async function creaMappaBlocchiPerGiornata(giornata: string, rows: any[]) {
   const nazionaliExcel = Array.from(
     new Set(rows.map((row) => normalizeTeam(row.Team)).filter(Boolean))
   );
@@ -73,7 +79,7 @@ async function creaMappaBlocchiSedicesimi(rows: any[]) {
   const { data, error } = await supabase
     .from("calendario_partite")
     .select("nazionale, blocco")
-    .eq("giornata", "sedicesimi")
+    .ilike("giornata", giornata)
     .in("nazionale", nazionaliExcel);
 
   if (error) throw error;
@@ -95,7 +101,7 @@ async function main() {
 
   if (!filePath) {
     throw new Error(
-      "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx oppure data/punteggi/sedicesimi.xlsx"
+      "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx oppure data/punteggi/sedicesimi.xlsx oppure data/punteggi/ottavi.xlsx"
     );
   }
 
@@ -148,12 +154,14 @@ async function main() {
     defval: null,
   });
 
-  const bloccoByNazionale =
-    giornata === "sedicesimi"
-      ? await creaMappaBlocchiSedicesimi(rows)
-      : new Map<string, string>();
+  const usaMappaBlocchi =
+    giornata === "sedicesimi" || giornata === "ottavi";
 
-  if (giornata !== "sedicesimi" && !blocco) {
+  const bloccoByNazionale = usaMappaBlocchi
+    ? await creaMappaBlocchiPerGiornata(giornata, rows)
+    : new Map<string, string>();
+
+  if (!usaMappaBlocchi && !blocco) {
     throw new Error("Blocco non determinato.");
   }
 
@@ -172,8 +180,9 @@ async function main() {
     const ruolo = normalizeRole(row.Position);
     const nazionale = normalizeTeam(row.Team);
 
-    const bloccoRecord =
-      giornata === "sedicesimi" ? bloccoByNazionale.get(nazionale) : blocco;
+    const bloccoRecord = usaMappaBlocchi
+      ? bloccoByNazionale.get(nazionale)
+      : blocco;
 
     if (!bloccoRecord) {
       saltati.push(`${nazionale} - ${nome}`);
