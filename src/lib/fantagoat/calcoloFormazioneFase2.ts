@@ -430,7 +430,9 @@ export function calcolaDettaglioFormazione(
     bonusPanchina +
     continuitaCapitano;
 
-  const totaleFinale = totalePrimaMoltiplicatore * moltiplicatore;
+  const totaleFinale = Number(
+  (totalePrimaMoltiplicatore * moltiplicatore).toFixed(1)
+);
 
   return {
     risultato,
