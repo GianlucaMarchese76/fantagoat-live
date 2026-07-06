@@ -51,6 +51,23 @@ export default async function FormazioneCompetizioneDettaglioPage({
   const nomePartecipante = data?.[0]?.partecipante ?? partecipanteNorm;
   const nomeCompetizione = data?.[0]?.competizione_nome ?? competizioneNorm;
 
+  const { data: salvataggio } = await supabase
+  .from("formazioni_competizione")
+  .select("created_at")
+  .eq("competizione_id", competizioneData?.id)
+  .eq("partecipante_id", data?.[0]?.partecipante_id)
+  .order("created_at", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+const dataSalvataggio = salvataggio?.created_at
+  ? new Date(salvataggio.created_at).toLocaleString("it-IT", {
+      dateStyle: "short",
+      timeStyle: "medium",
+      timeZone: "Europe/Rome",
+    })
+  : null;
+
   const codiciDesignanti = competizioniDesignanti(competizioneNorm);
 
   let continuitaCapitano:
@@ -332,6 +349,13 @@ const panchinaResidua = panchina.filter(
         </div>
 
         <div className="mt-1 text-slate-600">Formazione {nomeCompetizione}</div>
+
+        {dataSalvataggio && (
+  <div className="mt-3 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+    🕒 Formazione salvata il{" "}
+    <span className="font-bold">{dataSalvataggio}</span>
+  </div>
+)}
 
         <div className="mt-1 text-sm text-slate-500">
           Modulo dichiarato: {data?.[0]?.modulo_dichiarato ?? "—"}
