@@ -8,31 +8,26 @@ import { calcolaTotaleFormazione } from "../../../lib/fantagoat/calcoloFormazion
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const COMPETIZIONI_FASE1 = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
+
 const MAPPA_COMPETIZIONI: Record<
   string,
   { giornata: string; blocco: string; titolo: string }
 > = {
-  "16ALTA": {
-    giornata: "Sedicesimi",
-    blocco: "1-8",
-    titolo: "Classifica Sedicesimi 1-8",
-  },
-  "16BASSA": {
-    giornata: "Sedicesimi",
-    blocco: "9-16",
-    titolo: "Classifica Sedicesimi 9-16",
-  },
-  "8ALTA": {
-    giornata: "Ottavi",
-    blocco: "1-4",
-    titolo: "Classifica Ottavi 1-4",
-  },
-  "8BASSA": {
-    giornata: "Ottavi",
-    blocco: "5-8",
-    titolo: "Classifica Ottavi 5-8",
-  },
+  "16ALTA": { giornata: "Sedicesimi", blocco: "1-8", titolo: "Classifica Sedicesimi 1-8" },
+  "16BASSA": { giornata: "Sedicesimi", blocco: "9-16", titolo: "Classifica Sedicesimi 9-16" },
+  "8ALTA": { giornata: "Ottavi", blocco: "1-4", titolo: "Classifica Ottavi 1-4" },
+  "8BASSA": { giornata: "Ottavi", blocco: "5-8", titolo: "Classifica Ottavi 5-8" },
 };
+
+function formatPunti(punti: number) {
+  return Number.isInteger(punti) ? String(punti) : punti.toFixed(1);
+}
+
+function getPartecipante(join: any) {
+  if (Array.isArray(join)) return join[0] ?? null;
+  return join ?? null;
+}
 
 export default async function ClassificaPage({
   params,
@@ -42,84 +37,78 @@ export default async function ClassificaPage({
   const { competizione } = await params;
   const competizioneNorm = decodeURIComponent(competizione).toUpperCase();
 
-  const COMPETIZIONI_FASE1 = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
+  if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
+    const giornata = competizioneNorm.slice(0, 2);
+    const blocco = competizioneNorm.slice(2);
 
-if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
-  const { data, error } = await supabase
-    .from("classifiche")
-    .select(`
-      competizione,
-      partecipante_id,
-      punti,
-      posizione,
-      partecipanti:partecipante_id (
-        id,
-        nome,
-        slug
-      )
-    `)
-    .eq("competizione", competizioneNorm)
-    .order("posizione");
+    const { data, error } = await supabase
+      .from("classifiche")
+      .select(`
+        competizione,
+        partecipante_id,
+        punti,
+        posizione,
+        partecipanti:partecipante_id (
+          id,
+          nome,
+          slug
+        )
+      `)
+      .eq("competizione", competizioneNorm)
+      .order("posizione");
 
-  const giornata = competizioneNorm.slice(0, 2);
-  const blocco = competizioneNorm.slice(2);
+    const classifica = (data ?? []).map((r: any) => {
+      const partecipante = getPartecipante(r.partecipanti);
 
-  const classifica = (data ?? []).map((r: any) => {
-    const partecipante = Array.isArray(r.partecipanti)
-      ? r.partecipanti[0]
-      : r.partecipanti;
+      return {
+        posizione: r.posizione,
+        partecipante: partecipante?.nome ?? "Partecipante",
+        slug: partecipante?.slug ?? "",
+        punti: Number(r.punti ?? 0),
+      };
+    });
 
-    return {
-      posizione: r.posizione,
-      partecipante: partecipante?.nome ?? "Partecipante",
-      slug: partecipante?.slug ?? "",
-      punti: Number(r.punti ?? 0),
-    };
-  });
+    return (
+      <main className="min-h-screen bg-slate-100 p-4">
+        <a href="/classifiche" className="text-sm text-blue-600">
+          ← Classifiche
+        </a>
 
-  return (
-    <main className="min-h-screen bg-slate-100 p-4">
-      <a href="/classifiche" className="text-sm text-blue-600">
-        ← Classifiche
-      </a>
+        <h1 className="mt-5 mb-6 text-4xl font-bold">
+          Classifica {giornata} {blocco}
+        </h1>
 
-      <h1 className="mt-5 mb-6 text-4xl font-bold">
-        Classifica {giornata} {blocco}
-      </h1>
+        {error && (
+          <pre className="text-red-600">{JSON.stringify(error, null, 2)}</pre>
+        )}
 
-      {error && (
-        <pre className="text-red-600">{JSON.stringify(error, null, 2)}</pre>
-      )}
+        <section className="rounded-2xl bg-white p-4 shadow">
+          <div className="grid gap-2">
+            {classifica.length === 0 && (
+              <div className="text-slate-500">Nessun dato disponibile.</div>
+            )}
 
-      <section className="rounded-2xl bg-white p-4 shadow">
-        <div className="grid gap-2">
-          {classifica.length === 0 && (
-            <div className="text-slate-500">Nessun dato disponibile.</div>
-          )}
+            {classifica.map((r) => (
+              <a
+                key={r.slug}
+                href={`/formazioni/${encodeURIComponent(r.slug)}/${giornata}/${blocco}`}
+                className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="w-8 text-xl font-bold">{r.posizione}.</div>
+                  <div className="truncate font-semibold">{r.partecipante}</div>
+                </div>
 
-          {classifica.map((r) => (
-            <a
-              key={r.slug}
-              href={`/formazioni/${encodeURIComponent(
-                r.slug
-              )}/${giornata}/${blocco}`}
-              className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="w-8 text-xl font-bold">{r.posizione}.</div>
-                <div className="truncate font-semibold">{r.partecipante}</div>
-              </div>
-
-              <div className="text-2xl font-bold tabular-nums">
-                {Number.isInteger(r.punti) ? r.punti : r.punti.toFixed(1)}
-              </div>
-            </a>
-          ))}
-        </div>
-      </section>
-    </main>
-  );
-}
+                <div className="text-2xl font-bold tabular-nums">
+                  {formatPunti(r.punti)}
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (competizioneNorm === "GENERALE") {
     const { data: competizioni, error } = await supabase
@@ -178,15 +167,6 @@ if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
   const titoloPagina =
     configurazione?.titolo ?? `Classifica ${giornata} ${blocco}`;
 
-  const { data: statoCompetizione } = await supabase
-    .from("v_competizioni_concluse")
-    .select("conclusa")
-    .eq("giornata", giornata)
-    .eq("blocco", blocco)
-    .maybeSingle();
-
-  const competizioneConclusa = statoCompetizione?.conclusa ?? false;
-
   const { data, error } = await supabase
     .from("v_formazioni_competizione_live")
     .select("*")
@@ -221,15 +201,6 @@ if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
       punti: Number(r.punti.toFixed(1)),
     }));
 
-  console.log("DEBUG CLASSIFICA", {
-    competizioneNorm,
-    giornata,
-    blocco,
-    competizioneConclusa,
-    righeView: data?.length ?? 0,
-    righeClassifica: classifica.length,
-  });
-
   return (
     <main className="min-h-screen bg-slate-100 p-4">
       <a href="/classifiche" className="text-sm text-blue-600">
@@ -251,17 +222,9 @@ if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
           {classifica.map((r) => (
             <a
               key={r.slug}
-              href={
-                ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"].includes(
-                  competizioneNorm
-                )
-                  ? `/formazioni/${encodeURIComponent(
-                      r.partecipante.toLowerCase().replaceAll(" ", "")
-                    )}/${giornata}/${blocco}`
-                  : `/formazioni-competizione/${competizioneNorm}/dettaglio?partecipante=${encodeURIComponent(
-                      r.slug
-                    )}`
-              }
+              href={`/formazioni-competizione/${competizioneNorm}/dettaglio?partecipante=${encodeURIComponent(
+                r.slug
+              )}`}
               className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">
@@ -269,7 +232,9 @@ if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
                 <div className="truncate font-semibold">{r.partecipante}</div>
               </div>
 
-              <div className="text-2xl font-bold tabular-nums">{r.punti}</div>
+              <div className="text-2xl font-bold tabular-nums">
+                {formatPunti(r.punti)}
+              </div>
             </a>
           ))}
         </div>
