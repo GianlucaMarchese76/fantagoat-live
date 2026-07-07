@@ -322,8 +322,11 @@ export default async function Home() {
     ? (partite ?? []).filter((p) => p.giornata === competizioneLive.giornata)
     : [];
 
-  const partiteTotaliLive = new Set(partiteLiveFase.map((p) => p.partita)).size;
-
+  const partiteTotaliLive =
+  competizioneLive?.giornata === "ottavi"
+    ? 8
+    : new Set(partiteLiveFase.map((p) => p.partita)).size;
+    
   const partiteGiocateLive = new Set(
     partiteLiveFase
       .filter((p) => p.fine_partita && new Date(p.fine_partita) <= now)
