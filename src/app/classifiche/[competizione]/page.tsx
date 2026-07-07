@@ -42,6 +42,85 @@ export default async function ClassificaPage({
   const { competizione } = await params;
   const competizioneNorm = decodeURIComponent(competizione).toUpperCase();
 
+  const COMPETIZIONI_FASE1 = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
+
+if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
+  const { data, error } = await supabase
+    .from("classifiche")
+    .select(`
+      competizione,
+      partecipante_id,
+      punti,
+      posizione,
+      partecipanti:partecipante_id (
+        id,
+        nome,
+        slug
+      )
+    `)
+    .eq("competizione", competizioneNorm)
+    .order("posizione");
+
+  const giornata = competizioneNorm.slice(0, 2);
+  const blocco = competizioneNorm.slice(2);
+
+  const classifica = (data ?? []).map((r: any) => {
+    const partecipante = Array.isArray(r.partecipanti)
+      ? r.partecipanti[0]
+      : r.partecipanti;
+
+    return {
+      posizione: r.posizione,
+      partecipante: partecipante?.nome ?? "Partecipante",
+      slug: partecipante?.slug ?? "",
+      punti: Number(r.punti ?? 0),
+    };
+  });
+
+  return (
+    <main className="min-h-screen bg-slate-100 p-4">
+      <a href="/classifiche" className="text-sm text-blue-600">
+        ← Classifiche
+      </a>
+
+      <h1 className="mt-5 mb-6 text-4xl font-bold">
+        Classifica {giornata} {blocco}
+      </h1>
+
+      {error && (
+        <pre className="text-red-600">{JSON.stringify(error, null, 2)}</pre>
+      )}
+
+      <section className="rounded-2xl bg-white p-4 shadow">
+        <div className="grid gap-2">
+          {classifica.length === 0 && (
+            <div className="text-slate-500">Nessun dato disponibile.</div>
+          )}
+
+          {classifica.map((r) => (
+            <a
+              key={r.slug}
+              href={`/formazioni/${encodeURIComponent(
+                r.slug
+              )}/${giornata}/${blocco}`}
+              className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="w-8 text-xl font-bold">{r.posizione}.</div>
+                <div className="truncate font-semibold">{r.partecipante}</div>
+              </div>
+
+              <div className="text-2xl font-bold tabular-nums">
+                {Number.isInteger(r.punti) ? r.punti : r.punti.toFixed(1)}
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
   if (competizioneNorm === "GENERALE") {
     const { data: competizioni, error } = await supabase
       .from("v_competizioni_concluse")

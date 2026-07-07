@@ -16,13 +16,10 @@ const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
   "ottavi|5-8": "8BASSA",
 };
 
+const COMPETIZIONI_PRIMA_FASE = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
+
 const COMPETIZIONI_GENERALE = [
-  "G1AF",
-  "G1GL",
-  "G2AF",
-  "G2GL",
-  "G3AF",
-  "G3GL",
+  ...COMPETIZIONI_PRIMA_FASE,
   "16ALTA",
   "16BASSA",
   "8ALTA",
@@ -64,6 +61,36 @@ function slugPartecipante(nome: string) {
 
 function formatPunti(punti: number) {
   return Number.isInteger(punti) ? String(punti) : punti.toFixed(1);
+}
+
+function nomeCompetizione(giornata: string, blocco: string) {
+  const g = String(giornata ?? "").toLowerCase();
+  const b = String(blocco ?? "").toLowerCase();
+
+  switch (g) {
+    case "g1":
+      return `Prima Giornata • ${blocco}`;
+    case "g2":
+      return `Seconda Giornata • ${blocco}`;
+    case "g3":
+      return `Terza Giornata • ${blocco}`;
+    case "sedicesimi":
+      return b === "1-8"
+        ? "Sedicesimi • Tabellone 1-8"
+        : "Sedicesimi • Tabellone 9-16";
+    case "ottavi":
+      return b === "1-4"
+        ? "Ottavi • Tabellone 1-4"
+        : "Ottavi • Tabellone 5-8";
+    case "quarti":
+      return "Quarti di Finale";
+    case "semifinali":
+      return "Semifinali";
+    case "finale":
+      return "Finale";
+    default:
+      return `${giornata} ${blocco}`;
+  }
 }
 
 function getPartecipanteFromJoin(r: RigaClassifica) {
@@ -132,65 +159,217 @@ async function getClassificaAggregata(
     }));
 }
 
-function ClassificaCard({
-  titolo,
-  sottotitolo,
-  righe,
-  href,
+function Card({
+  children,
+  className = "",
 }: {
-  titolo: string;
-  sottotitolo: string;
-  righe: RigaAggregata[];
-  href: string;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="rounded-2xl bg-white p-4 shadow">
-      <h3 className="mb-1 text-xl font-bold">{titolo}</h3>
-      <div className="mb-3 text-sm text-slate-500">{sottotitolo}</div>
+    <section
+      className={`rounded-[28px] bg-white p-5 shadow-sm ring-1 ring-slate-200/70 md:p-7 ${className}`}
+    >
+      {children}
+    </section>
+  );
+}
+
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
+      {children}
+    </div>
+  );
+}
+
+function PodiumRow({ r }: { r: RigaAggregata }) {
+  const medal =
+    r.posizione === 1
+      ? "🥇"
+      : r.posizione === 2
+        ? "🥈"
+        : r.posizione === 3
+          ? "🥉"
+          : r.posizione;
+
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
+      <Link
+        href={`/partecipanti/${encodeURIComponent(
+          String(r.slug ?? "").toLowerCase()
+        )}`}
+        className="flex min-w-0 items-center gap-3 font-bold text-slate-900 hover:text-blue-600"
+      >
+        <span className="text-xl">{medal}</span>
+        <span className="truncate">{r.partecipante}</span>
+      </Link>
+
+      <div className="shrink-0 text-xl font-black tabular-nums text-slate-950">
+        {formatPunti(r.punti)}
+      </div>
+    </div>
+  );
+}
+
+function RankingRow({ r }: { r: RigaAggregata }) {
+  return (
+    <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-slate-100 px-1 py-3 last:border-b-0">
+      <div className="text-sm font-black text-slate-400">{r.posizione}</div>
+
+      <Link
+        href={`/partecipanti/${encodeURIComponent(
+          String(r.slug ?? "").toLowerCase()
+        )}`}
+        className="min-w-0 truncate font-bold text-slate-900 hover:text-blue-600"
+      >
+        {r.partecipante}
+      </Link>
+
+      <div className="text-lg font-black tabular-nums text-slate-950">
+        {formatPunti(r.punti)}
+      </div>
+    </div>
+  );
+}
+
+function LiveRankingCard({
+  righe,
+  sottotitolo,
+}: {
+  righe: RigaAggregata[];
+  sottotitolo: string;
+}) {
+  return (
+    <Card className="h-full">
+      <SectionEyebrow>Turno in svolgimento</SectionEyebrow>
+
+      <div className="mb-5">
+        <h2 className="text-2xl font-black tracking-tight text-slate-950">
+          Classifica Live
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{sottotitolo}</p>
+      </div>
 
       {righe.length === 0 ? (
-        <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-          Classifica non ancora disponibile.
+        <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500">
+          Classifica live non ancora disponibile.
         </div>
       ) : (
-        <div className="grid gap-2">
-          {righe.slice(0, 8).map((r) => (
-            <div
-              key={r.partecipante_id}
-              className={`flex items-center justify-between rounded-xl px-4 py-3 ${
-                r.posizione === 1
-                  ? "bg-amber-50"
-                  : r.posizione === 2
-                    ? "bg-slate-100"
-                    : r.posizione === 3
-                      ? "bg-orange-50"
-                      : "bg-slate-50"
-              }`}
-            >
-              <Link
-                href={`/partecipanti/${encodeURIComponent(
-  String(r.slug ?? "").toLowerCase()
-)}`}
-                className="font-semibold hover:text-blue-600"
-              >
-                {r.posizione}. {r.partecipante}
-              </Link>
-
-              <div className="text-xl font-bold tabular-nums">
-                {formatPunti(r.punti)}
-              </div>
-            </div>
+        <div className="grid gap-3">
+          {righe.slice(0, 3).map((r) => (
+            <PodiumRow key={r.partecipante_id} r={r} />
           ))}
         </div>
       )}
 
-      <Link
-        href={href}
-        className="mt-4 block text-sm font-semibold text-blue-600"
-      >
-        → Apri classifica completa
-      </Link>
-    </section>
+      <div className="mt-6 grid gap-3 border-t border-slate-100 pt-5">
+        <Link
+          href="/classifiche/ottavi"
+          className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-slate-800"
+        >
+          Vedi classifica completa
+        </Link>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Link
+            href="/classifiche/prima-fase"
+            className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+          >
+            <span className="block">Classifica Fase a Gironi →</span>
+            <span className="mt-1 block text-xs font-semibold text-slate-400">
+              G1AF · G1GL · G2AF · G2GL · G3AF · G3GL
+            </span>
+          </Link>
+
+          <Link
+            href="/classifiche/sedicesimi"
+            className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+          >
+            Sedicesimi →
+          </Link>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function GeneralRankingCard({ righe }: { righe: RigaAggregata[] }) {
+  return (
+    <Card>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <SectionEyebrow>Classifica</SectionEyebrow>
+          <h2 className="text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
+            Classifica Generale
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Somma complessiva Fase a Gironi + Sedicesimi + Ottavi.
+          </p>
+        </div>
+
+        <Link
+          href="/classifiche/generale"
+          className="text-sm font-black text-blue-600 hover:text-blue-700"
+        >
+          Apri completa →
+        </Link>
+      </div>
+
+      {righe.length === 0 ? (
+        <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500">
+          Classifica non ancora disponibile.
+        </div>
+      ) : (
+        <div>
+          <div className="grid grid-cols-[42px_1fr_auto] gap-3 border-b border-slate-200 px-1 pb-2 text-xs font-black uppercase tracking-widest text-slate-400">
+            <div>Pos</div>
+            <div>Partecipante</div>
+            <div>Punti</div>
+          </div>
+
+          <div>
+            {righe.map((r) => (
+              <RankingRow key={r.partecipante_id} r={r} />
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function QuickLink({
+  href,
+  title,
+  description,
+  icon,
+  external = false,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: string;
+  external?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
+      className="group rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-slate-200/70 transition hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+        {icon}
+      </div>
+
+      <div className="text-xl font-black text-slate-950">{title}</div>
+      <div className="mt-1 text-sm leading-6 text-slate-500">{description}</div>
+
+      <div className="mt-4 text-sm font-black text-blue-600 group-hover:text-blue-700">
+        Apri →
+      </div>
+    </Link>
   );
 }
 
@@ -279,7 +458,6 @@ export default async function Home() {
     : { data: null };
 
   let hrefSchiera = "/login";
-  let testoSchiera = "Accedi per schierare";
 
   if (partecipanteLoggato && competizioneAttiva) {
     const { data: rosaCompetizione } = await supabase
@@ -297,14 +475,13 @@ export default async function Home() {
       : `/crea-rosa/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
           partecipanteLoggato.slug
         )}`;
-
-    testoSchiera = rosaCompleta
-      ? "Vai alla tua formazione"
-      : "Crea la tua rosa e schiera la formazione";
   }
 
-  const [generale, sedicesimi, ottavi] = await Promise.all([
+  const ctaLabel = partecipanteLoggato ? "GIOCA" : "ACCEDI PER GIOCARE";
+
+  const [generale, primaFase, sedicesimi, ottavi] = await Promise.all([
     getClassificaAggregata(COMPETIZIONI_GENERALE),
+    getClassificaAggregata(COMPETIZIONI_PRIMA_FASE),
     getClassificaAggregata(COMPETIZIONI_SEDICESIMI),
     getClassificaAggregata(COMPETIZIONI_OTTAVI),
   ]);
@@ -323,10 +500,10 @@ export default async function Home() {
     : [];
 
   const partiteTotaliLive =
-  competizioneLive?.giornata === "ottavi"
-    ? 8
-    : new Set(partiteLiveFase.map((p) => p.partita)).size;
-    
+    competizioneLive?.giornata === "ottavi"
+      ? 8
+      : new Set(partiteLiveFase.map((p) => p.partita)).size;
+
   const partiteGiocateLive = new Set(
     partiteLiveFase
       .filter((p) => p.fine_partita && new Date(p.fine_partita) <= now)
@@ -338,182 +515,139 @@ export default async function Home() {
     partiteTotaliLive - partiteGiocateLive
   );
 
+  const liveSubtitle = competizioneLive
+    ? `Live ${competizioneLive.giornata} — ${partiteGiocateLive}/${partiteTotaliLive} partite concluse, ${partiteMancantiLive} mancanti`
+    : "Somma live 8ALTA + 8BASSA";
+
   return (
-    <main className="min-h-screen bg-slate-100 p-4">
-      <header className="mb-8">
-        <div className="flex items-center gap-4">
-          <Image
-            src="/logo-fantagoat-2026.png"
-            alt="FantaGOAT"
-            width={80}
-            height={80}
-            priority
-            className="rounded-xl"
-          />
+    <main className="min-h-screen bg-[#F6F7FB] px-4 py-5 text-slate-950 md:px-8 md:py-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-6 flex items-center justify-between gap-4 md:mb-8">
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/logo-fantagoat-2026.png"
+              alt="FantaGOAT"
+              width={64}
+              height={64}
+              priority
+              className="rounded-2xl"
+            />
 
-          <div className="flex-1">
-            <h1 className="text-3xl font-black md:text-5xl">
-              FantaGOAT Live
-            </h1>
-            <p className="text-slate-600">Fantacalcio Live 2026</p>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-2xl bg-white p-3 shadow">
-          {partecipanteLoggato ? (
-            <div className="flex items-center justify-between gap-3">
-              <div className="font-bold">👤 {partecipanteLoggato.nome}</div>
-
-              <form method="post" action="/api/logout">
-                <button className="text-sm font-bold text-blue-600">
-                  Esci
-                </button>
-              </form>
+            <div>
+              <h1 className="text-2xl font-black leading-none tracking-tight md:text-4xl">
+                FantaGOAT
+              </h1>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                Fantacalcio Live 2026
+              </p>
             </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <div className="font-bold text-slate-600">👤 Ospite</div>
+          </Link>
 
-              <Link href="/login" className="text-sm font-bold text-blue-600">
+          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/70">
+            {partecipanteLoggato ? (
+              <div className="flex items-center gap-4">
+                <div className="hidden text-sm font-black text-slate-700 sm:block">
+                  👤 {partecipanteLoggato.nome}
+                </div>
+
+                <form method="post" action="/api/logout">
+                  <button className="text-sm font-black text-blue-600 hover:text-blue-700">
+                    Esci
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <Link href="/login" className="text-sm font-black text-blue-600">
                 Accedi
               </Link>
-            </div>
-          )}
-        </div>
-      </header>
+            )}
+          </div>
+        </header>
 
-      <section className="mb-8">
-        <Link
-          href={hrefSchiera}
-          className="block rounded-2xl bg-blue-600 p-5 text-white shadow"
-        >
-          <div className="mb-2 text-2xl font-bold">⚡ Gioca!</div>
-
-          {prossimaDeadline ? (
-            <div className="my-4 rounded-xl border border-blue-300/20 bg-blue-500/20 p-3">
-              <div className="text-xs font-bold uppercase tracking-wide text-blue-200">
-                ⏰ Prossima scadenza
-              </div>
-
-              <div className="mt-1 font-bold">
-                {prossimaDeadline.giornata} {prossimaDeadline.blocco}
-              </div>
-
-              <div className="text-sm text-blue-100">
-                {prossimaDeadline.deadline.toLocaleString("it-IT", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                  timeZone: "Europe/Rome",
-                })}
-              </div>
-
-              <div className="mt-2 text-lg font-black text-white">
-                <CountdownDeadline
-                  deadline={prossimaDeadline.deadline.toISOString()}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="my-4 rounded-xl border border-blue-300/20 bg-blue-500/20 p-3">
-              <div className="font-bold">Nessuna prossima scadenza trovata</div>
-              <div className="text-sm text-blue-100">
-                Puoi comunque consultare classifiche, formazioni, rose e
-                regolamento.
-              </div>
-            </div>
-          )}
-
-          <div className="font-semibold text-blue-100">{testoSchiera}</div>
-        </Link>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-bold text-slate-500">CLASSIFICHE</h2>
-
-        <div className="grid gap-4">
-          <ClassificaCard
-            titolo="Classifica Generale"
-            sottotitolo="Somma complessiva Fase 1 + Sedicesimi + Ottavi"
-            righe={generale}
-            href="/classifiche/generale"
-          />
-
-          <ClassificaCard
-            titolo="Classifica Sedicesimi"
-            sottotitolo="Somma 16ALTA + 16BASSA"
-            righe={sedicesimi}
-            href="/classifiche/sedicesimi"
-          />
-
-          <ClassificaCard
-            titolo="Classifica Live Ottavi"
-            sottotitolo={
-              competizioneLive
-                ? `Live ${competizioneLive.giornata} — ${partiteGiocateLive}/${partiteTotaliLive} partite concluse, ${partiteMancantiLive} mancanti`
-                : "Somma live 8ALTA + 8BASSA"
-            }
-            righe={ottavi}
-            href="/classifiche/ottavi"
-          />
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-sm font-bold text-slate-500">
-          ROSA E FORMAZIONI
-        </h2>
-
-        <div className="grid gap-4">
+        <section className="mb-6 grid gap-5 lg:grid-cols-[1.45fr_1fr] md:mb-8">
           <Link
-            href="/formazioni"
-            className="block rounded-2xl bg-white p-4 shadow"
+            href={hrefSchiera}
+            className="group relative overflow-hidden rounded-[32px] bg-slate-950 p-6 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg md:p-8"
           >
-            <div className="text-xl font-bold">Formazioni</div>
-            <div className="text-slate-600">
-              Consulta le formazioni schierate.
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.35),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.22),transparent_34%)]" />
+
+            <div className="relative">
+              {prossimaDeadline ? (
+                <div className="rounded-[24px] bg-white/10 p-5 ring-1 ring-white/15 md:p-6">
+                  <div className="text-xs font-black uppercase tracking-[0.22em] text-blue-200">
+                    Prossima deadline
+                  </div>
+
+                  <div className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
+                    {nomeCompetizione(
+                      prossimaDeadline.giornata,
+                      prossimaDeadline.blocco
+                    )}
+                  </div>
+
+                  <div className="mt-2 text-base font-bold text-slate-300">
+                    {prossimaDeadline.deadline.toLocaleString("it-IT", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                      timeZone: "Europe/Rome",
+                    })}
+                  </div>
+
+                  <div className="mt-6 rounded-2xl bg-white px-4 py-4 text-center text-3xl font-black text-slate-950 md:text-4xl">
+                    <CountdownDeadline
+                      deadline={prossimaDeadline.deadline.toISOString()}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[24px] bg-white/10 p-5 ring-1 ring-white/15 md:p-6">
+                  <div className="text-2xl font-black">
+                    Nessuna prossima scadenza trovata
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-slate-300">
+                    Puoi comunque consultare classifiche, formazioni, rose e
+                    regolamento.
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 rounded-2xl bg-blue-600 px-5 py-4 text-center text-base font-black tracking-wide text-white transition group-hover:bg-blue-500 md:text-lg">
+                {ctaLabel}
+              </div>
             </div>
           </Link>
 
-          <Link href="/rose" className="block rounded-2xl bg-white p-4 shadow">
-            <div className="text-xl font-bold">Rose</div>
-            <div className="text-slate-600">
-              Scopri le rose dei partecipanti.
-            </div>
-          </Link>
-        </div>
-      </section>
+          <LiveRankingCard righe={ottavi} sottotitolo={liveSubtitle} />
+        </section>
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-bold text-slate-500">
-          REGOLAMENTO UFFICIALE
-        </h2>
+        <section className="mb-6 md:mb-8">
+          <GeneralRankingCard righe={generale} />
+        </section>
 
-        <Link
-          href="/regolamento/Regolamento_Ufficiale_FantaGOAT_2026.pdf"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block rounded-2xl bg-white p-5 shadow transition hover:shadow-lg"
-        >
-          <div className="mb-2 text-2xl font-bold">📘 Regolamento</div>
+        <section className="grid gap-4 md:grid-cols-3">
+          <QuickLink
+            href="/formazioni"
+            title="Formazioni"
+            description="Consulta le formazioni schierate."
+            icon="⚽"
+          />
 
-          <div className="mb-4 text-slate-600">
-            Documento ufficiale della Fase a Eliminazione Diretta contenente
-            tutte le regole relative alla costruzione delle rose, alle
-            formazioni, al sistema di punteggio e allo svolgimento della
-            competizione.
-          </div>
+          <QuickLink
+            href="/rose"
+            title="Rose"
+            description="Scopri le rose dei partecipanti."
+            icon="👥"
+          />
 
-          <div className="flex items-center justify-between">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">
-              Versione 2.0
-            </span>
-
-            <span className="text-sm font-semibold text-blue-600">
-              Apri PDF →
-            </span>
-          </div>
-        </Link>
-      </section>
+          <QuickLink
+            href="/regolamento/Regolamento_Ufficiale_FantaGOAT_2026.pdf"
+            title="Regolamento"
+            description="Apri il documento ufficiale FantaGOAT 2026."
+            icon="📘"
+            external
+          />
+        </section>
+      </div>
     </main>
   );
 }

@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "import-punteggi": "tsx scripts/import-punteggi.ts",
-    "import-gol-decisivi": "tsx scripts/import-gol-decisivi.ts",
-    "import-extra-punti": "tsx scripts/import-extra-punti.ts"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "eslint",
+  "import-punteggi": "tsx scripts/import-punteggi.ts",
+  "import-gol-decisivi": "tsx scripts/import-gol-decisivi.ts",
+  "import-extra-punti": "tsx scripts/import-extra-punti.ts",
+  "check": "tsx scripts/check/index.ts",
+  "check:calendar": "tsx scripts/check/calendario.ts"
+},
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
     "dotenv": "^17.4.2",
