@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
+import type { ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { statoCompetizione } from "../lib/fantagoat";
 import { COOKIE_PARTECIPANTE } from "../lib/fantagoat/sessione";
@@ -14,20 +15,36 @@ const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
   "sedicesimi|9-16": "16BASSA",
   "ottavi|1-4": "8ALTA",
   "ottavi|5-8": "8BASSA",
+  "quarti|unico": "QUARTI",
+  "semifinali|unico": "SEMIFINALI",
+  "terzo_posto|unico": "TERZO_POSTO",
+  "finale|unico": "FINALE",
 };
 
-const COMPETIZIONI_PRIMA_FASE = ["G1AF", "G1GL", "G2AF", "G2GL", "G3AF", "G3GL"];
+const COMPETIZIONI_PRIMA_FASE = [
+  "G1AF",
+  "G1GL",
+  "G2AF",
+  "G2GL",
+  "G3AF",
+  "G3GL",
+];
 
-const COMPETIZIONI_GENERALE = [
-  ...COMPETIZIONI_PRIMA_FASE,
+const COMPETIZIONI_MATA_MATA = [
   "16ALTA",
   "16BASSA",
   "8ALTA",
   "8BASSA",
+  "QUARTI",
+  "SEMIFINALI",
+  "TERZO_POSTO",
+  "FINALE",
 ];
 
-const COMPETIZIONI_SEDICESIMI = ["16ALTA", "16BASSA"];
-const COMPETIZIONI_OTTAVI = ["8ALTA", "8BASSA"];
+const COMPETIZIONI_GENERALE = [
+  ...COMPETIZIONI_PRIMA_FASE,
+  ...COMPETIZIONI_MATA_MATA,
+];
 
 type PartecipanteJoin = {
   id: string;
@@ -69,28 +86,87 @@ function nomeCompetizione(giornata: string, blocco: string) {
 
   switch (g) {
     case "g1":
-      return `Prima Giornata • ${blocco}`;
+      return b === "af"
+        ? "Giornata 1 · Gironi A-F"
+        : "Giornata 1 · Gironi G-L";
     case "g2":
-      return `Seconda Giornata • ${blocco}`;
+      return b === "af"
+        ? "Giornata 2 · Gironi A-F"
+        : "Giornata 2 · Gironi G-L";
     case "g3":
-      return `Terza Giornata • ${blocco}`;
+      return b === "af"
+        ? "Giornata 3 · Gironi A-F"
+        : "Giornata 3 · Gironi G-L";
     case "sedicesimi":
       return b === "1-8"
-        ? "Sedicesimi • Tabellone 1-8"
-        : "Sedicesimi • Tabellone 9-16";
+        ? "Sedicesimi · Tabellone 1-8"
+        : "Sedicesimi · Tabellone 9-16";
     case "ottavi":
       return b === "1-4"
-        ? "Ottavi • Tabellone 1-4"
-        : "Ottavi • Tabellone 5-8";
+        ? "Ottavi · Tabellone 1-4"
+        : "Ottavi · Tabellone 5-8";
     case "quarti":
       return "Quarti di Finale";
     case "semifinali":
       return "Semifinali";
+    case "terzo_posto":
+      return "Finale 3° Posto";
     case "finale":
       return "Finale";
     default:
       return `${giornata} ${blocco}`;
   }
+}
+
+function getLiveConfig(giornata?: string | null) {
+  const g = String(giornata ?? "").toLowerCase();
+
+  if (g === "sedicesimi") {
+    return {
+      titolo: "Classifica Live Sedicesimi",
+      label: "Sedicesimi",
+      codici: ["16ALTA", "16BASSA"],
+      href: "/classifiche/sedicesimi",
+    };
+  }
+
+  if (g === "ottavi") {
+    return {
+      titolo: "Classifica Live Ottavi",
+      label: "Ottavi",
+      codici: ["8ALTA", "8BASSA"],
+      href: "/classifiche/ottavi",
+    };
+  }
+
+  if (g === "quarti") {
+    return {
+      titolo: "Classifica Live Quarti",
+      label: "Quarti",
+      codici: ["QUARTI"],
+      href: "/classifiche/quarti",
+    };
+  }
+
+  if (g === "semifinali") {
+    return {
+      titolo: "Classifica Live Semifinali",
+      label: "Semifinali",
+      codici: ["SEMIFINALI"],
+      href: "/classifiche/semifinali",
+    };
+  }
+
+  if (g === "terzo_posto" || g === "finale") {
+    return {
+      titolo: "Classifica Live Finale",
+      label: "Finale",
+      codici: ["TERZO_POSTO", "FINALE"],
+      href: "/classifiche/finale",
+    };
+  }
+
+  return null;
 }
 
 function getPartecipanteFromJoin(r: RigaClassifica) {
@@ -163,7 +239,7 @@ function Card({
   children,
   className = "",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   return (
@@ -175,7 +251,7 @@ function Card({
   );
 }
 
-function SectionEyebrow({ children }: { children: React.ReactNode }) {
+function SectionEyebrow({ children }: { children: ReactNode }) {
   return (
     <div className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
       {children}
@@ -191,7 +267,7 @@ function PodiumRow({ r }: { r: RigaAggregata }) {
         ? "🥈"
         : r.posizione === 3
           ? "🥉"
-          : r.posizione;
+          : `${r.posizione}.`;
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
@@ -235,18 +311,22 @@ function RankingRow({ r }: { r: RigaAggregata }) {
 
 function LiveRankingCard({
   righe,
+  titolo,
   sottotitolo,
+  href,
 }: {
   righe: RigaAggregata[];
+  titolo: string;
   sottotitolo: string;
+  href: string;
 }) {
   return (
-    <Card className="h-full">
+    <Card>
       <SectionEyebrow>Turno in svolgimento</SectionEyebrow>
 
       <div className="mb-5">
         <h2 className="text-2xl font-black tracking-tight text-slate-950">
-          Classifica Live
+          {titolo}
         </h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">{sottotitolo}</p>
       </div>
@@ -265,7 +345,7 @@ function LiveRankingCard({
 
       <div className="mt-6 grid gap-3 border-t border-slate-100 pt-5">
         <Link
-          href="/classifiche/ottavi"
+          href={href}
           className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-slate-800"
         >
           Vedi classifica completa
@@ -276,17 +356,14 @@ function LiveRankingCard({
             href="/classifiche/prima-fase"
             className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
           >
-            <span className="block">Classifica Fase a Gironi →</span>
-            <span className="mt-1 block text-xs font-semibold text-slate-400">
-              G1AF · G1GL · G2AF · G2GL · G3AF · G3GL
-            </span>
+            Classifica Prima Fase →
           </Link>
 
           <Link
             href="/classifiche/sedicesimi"
             className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
           >
-            Sedicesimi →
+            Classifica Sedicesimi →
           </Link>
         </div>
       </div>
@@ -294,29 +371,43 @@ function LiveRankingCard({
   );
 }
 
-function GeneralRankingCard({ righe }: { righe: RigaAggregata[] }) {
+function RankingCard({
+  titolo,
+  eyebrow,
+  descrizione,
+  righe,
+  href,
+  maxRows,
+}: {
+  titolo: string;
+  eyebrow: string;
+  descrizione: string;
+  righe: RigaAggregata[];
+  href: string;
+  maxRows?: number;
+}) {
+  const rows = typeof maxRows === "number" ? righe.slice(0, maxRows) : righe;
+
   return (
     <Card>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <SectionEyebrow>Classifica</SectionEyebrow>
+          <SectionEyebrow>{eyebrow}</SectionEyebrow>
           <h2 className="text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
-            Classifica Generale
+            {titolo}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Somma complessiva Fase a Gironi + Sedicesimi + Ottavi.
-          </p>
+          <p className="mt-1 text-sm text-slate-500">{descrizione}</p>
         </div>
 
         <Link
-          href="/classifiche/generale"
+          href={href}
           className="text-sm font-black text-blue-600 hover:text-blue-700"
         >
           Apri completa →
         </Link>
       </div>
 
-      {righe.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500">
           Classifica non ancora disponibile.
         </div>
@@ -329,7 +420,7 @@ function GeneralRankingCard({ righe }: { righe: RigaAggregata[] }) {
           </div>
 
           <div>
-            {righe.map((r) => (
+            {rows.map((r) => (
               <RankingRow key={r.partecipante_id} r={r} />
             ))}
           </div>
@@ -392,9 +483,9 @@ export default async function Home() {
     .order("blocco");
 
   const { data: partite } = await supabase
-    .from("calendario_partite")
-    .select("giornata, blocco, partita, kickoff, fine_partita")
-    .order("kickoff");
+  .from("calendario_partite")
+  .select("giornata, blocco, partita, kickoff, fine_partita, nazionale, avversaria")
+  .order("kickoff");
 
   const now = new Date();
 
@@ -440,6 +531,26 @@ export default async function Home() {
       })
       .sort((a, b) => b.primaPartita.getTime() - a.primaPartita.getTime())[0];
 
+const partiteProssimoTurno =
+  competizioneGiocabile
+    ? (partite ?? [])
+        .filter(
+          (p) =>
+            p.giornata === competizioneGiocabile.giornata &&
+            p.blocco === competizioneGiocabile.blocco
+        )
+        .reduce((acc, row) => {
+          if (!acc.some((p) => p.partita === row.partita)) {
+            acc.push({
+              partita: row.partita,
+              casa: row.nazionale,
+              ospite: row.avversaria,
+            });
+          }
+          return acc;
+        }, [] as { partita: number; casa: string; ospite: string }[])
+    : [];
+
   const codiceCompetizioneHome = competizioneGiocabile
     ? CODICE_COMPETIZIONE_BY_CALENDARIO[
         chiaveCalendario(
@@ -477,15 +588,6 @@ export default async function Home() {
         )}`;
   }
 
-  const ctaLabel = partecipanteLoggato ? "GIOCA" : "ACCEDI PER GIOCARE";
-
-  const [generale, primaFase, sedicesimi, ottavi] = await Promise.all([
-    getClassificaAggregata(COMPETIZIONI_GENERALE),
-    getClassificaAggregata(COMPETIZIONI_PRIMA_FASE),
-    getClassificaAggregata(COMPETIZIONI_SEDICESIMI),
-    getClassificaAggregata(COMPETIZIONI_OTTAVI),
-  ]);
-
   const competizioneLive =
     Array.from(blocchi.values()).find((b) => {
       const c = competizioniConcluse?.find(
@@ -495,14 +597,17 @@ export default async function Home() {
       return c && statoCompetizione(c.conclusa, b.primaPartita, now) === "LIVE";
     }) ?? null;
 
+  const liveConfig = getLiveConfig(competizioneLive?.giornata);
+
   const partiteLiveFase = competizioneLive
-    ? (partite ?? []).filter((p) => p.giornata === competizioneLive.giornata)
+    ? (partite ?? []).filter(
+        (p) =>
+          String(p.giornata).toLowerCase() ===
+          String(competizioneLive.giornata).toLowerCase()
+      )
     : [];
 
-  const partiteTotaliLive =
-    competizioneLive?.giornata === "ottavi"
-      ? 8
-      : new Set(partiteLiveFase.map((p) => p.partita)).size;
+  const partiteTotaliLive = new Set(partiteLiveFase.map((p) => p.partita)).size;
 
   const partiteGiocateLive = new Set(
     partiteLiveFase
@@ -515,9 +620,24 @@ export default async function Home() {
     partiteTotaliLive - partiteGiocateLive
   );
 
-  const liveSubtitle = competizioneLive
-    ? `Live ${competizioneLive.giornata} — ${partiteGiocateLive}/${partiteTotaliLive} partite concluse, ${partiteMancantiLive} mancanti`
-    : "Somma live 8ALTA + 8BASSA";
+  const [generale, mataMata, liveRanking] = await Promise.all([
+    getClassificaAggregata(COMPETIZIONI_GENERALE),
+    getClassificaAggregata(COMPETIZIONI_MATA_MATA),
+    liveConfig ? getClassificaAggregata(liveConfig.codici) : Promise.resolve([]),
+  ]);
+
+  const posizioneUtenteGenerale = partecipanteLoggato
+    ? generale.find((r) => r.partecipante_id === partecipanteLoggato.id)
+        ?.posizione
+    : null;
+
+  const nomeProssimoTurno = prossimaDeadline
+    ? nomeCompetizione(prossimaDeadline.giornata, prossimaDeadline.blocco)
+    : "Nessuna scadenza attiva";
+
+  const liveSubtitle = liveConfig
+    ? `${partiteGiocateLive}/${partiteTotaliLive} partite concluse, ${partiteMancantiLive} mancanti`
+    : "Nessuna competizione live in corso.";
 
   return (
     <main className="min-h-screen bg-[#F6F7FB] px-4 py-5 text-slate-950 md:px-8 md:py-8">
@@ -535,7 +655,7 @@ export default async function Home() {
 
             <div>
               <h1 className="text-2xl font-black leading-none tracking-tight md:text-4xl">
-                FantaGOAT
+                FantaGOAT Live
               </h1>
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 Fantacalcio Live 2026
@@ -564,28 +684,119 @@ export default async function Home() {
           </div>
         </header>
 
-        <section className="mb-6 grid gap-5 lg:grid-cols-[1.45fr_1fr] md:mb-8">
+        <section className="mb-6 rounded-[28px] bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
+  {partecipanteLoggato && (
+    <div className="mb-4 text-left text-sm font-black uppercase tracking-[0.12em] text-slate-800">
+      {partecipanteLoggato.nome}
+    </div>
+  )}
+
+  <div className="grid grid-cols-3 gap-3 text-center">
+    <div>
+      <div className="text-xs font-black uppercase tracking-wide text-slate-400">
+        Live
+      </div>
+      <div className="mt-1 text-lg font-black">
+        {liveConfig?.label ?? "—"}
+      </div>
+    </div>
+
+    <div>
+      <div className="text-xs font-black uppercase tracking-wide text-slate-400">
+        Partite
+      </div>
+      <div className="mt-1 text-lg font-black">
+        {liveConfig ? `${partiteGiocateLive}/${partiteTotaliLive}` : "—"}
+      </div>
+    </div>
+
+    <div>
+      <div className="text-xs font-black uppercase tracking-wide text-slate-400">
+        Generale
+      </div>
+      <div className="mt-1 text-lg font-black">
+        {posizioneUtenteGenerale ? `#${posizioneUtenteGenerale}` : "—"}
+      </div>
+    </div>
+  </div>
+</section>
+
+        <section className="mb-6 grid gap-5 lg:grid-cols-[1.25fr_1fr] md:mb-8">
           <Link
             href={hrefSchiera}
-            className="group relative overflow-hidden rounded-[32px] bg-slate-950 p-6 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg md:p-8"
+            className="group relative overflow-hidden rounded-[32px] bg-blue-600 p-6 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg md:p-8"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.35),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.22),transparent_34%)]" />
-
             <div className="relative">
+              <div className="text-xs font-black uppercase tracking-[0.22em] text-blue-100">
+                Prossimo turno
+              </div>
+
+              <h2 className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
+                {nomeProssimoTurno}
+              </h2>
+
+{partiteProssimoTurno.length > 0 && (
+  <div className="mt-6 rounded-2xl bg-white/10 p-4">
+    <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-blue-100">
+      Tabellone
+    </div>
+
+    <div className="space-y-2">
+  {partiteProssimoTurno.map((p) => (
+    <div
+      key={p.partita}
+      className="grid grid-cols-[1fr_auto_1fr] items-center gap-3"
+    >
+      {/* Squadra di casa */}
+      <div className="flex items-center justify-end gap-2">
+        <div className="flex h-4 w-6 items-center justify-center">
+          <Image
+            src={`/bandiere/${p.casa}.svg`}
+            alt={p.casa}
+            width={24}
+            height={16}
+            className="max-h-4 w-auto"
+          />
+        </div>
+
+        <span className="w-8 text-left font-black tracking-wide">
+          {p.casa}
+        </span>
+      </div>
+
+      {/* VS */}
+      <div className="text-center text-sm font-bold text-blue-100">
+        vs
+      </div>
+
+      {/* Squadra ospite */}
+      <div className="flex items-center gap-2">
+        <div className="flex h-4 w-6 items-center justify-center">
+          <Image
+            src={`/bandiere/${p.ospite}.svg`}
+            alt={p.ospite}
+            width={24}
+            height={16}
+            className="max-h-4 w-auto"
+          />
+        </div>
+
+        <span className="w-8 text-left font-black tracking-wide">
+          {p.ospite}
+        </span>
+      </div>
+    </div>
+  ))}
+</div>  </div>
+)}
+
               {prossimaDeadline ? (
-                <div className="rounded-[24px] bg-white/10 p-5 ring-1 ring-white/15 md:p-6">
-                  <div className="text-xs font-black uppercase tracking-[0.22em] text-blue-200">
-                    Prossima deadline
+                <div className="mt-6 rounded-[24px] bg-white/10 p-5 ring-1 ring-white/15 md:p-6">
+                  <div className="text-sm font-bold text-blue-100">
+                    Scadenza formazione
                   </div>
 
-                  <div className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
-                    {nomeCompetizione(
-                      prossimaDeadline.giornata,
-                      prossimaDeadline.blocco
-                    )}
-                  </div>
-
-                  <div className="mt-2 text-base font-bold text-slate-300">
+                  <div className="mt-1 text-xl font-black">
                     {prossimaDeadline.deadline.toLocaleString("it-IT", {
                       dateStyle: "short",
                       timeStyle: "short",
@@ -593,35 +804,64 @@ export default async function Home() {
                     })}
                   </div>
 
-                  <div className="mt-6 rounded-2xl bg-white px-4 py-4 text-center text-3xl font-black text-slate-950 md:text-4xl">
+                  <div className="mt-6 rounded-2xl bg-white/10 px-4 py-4 text-center text-4xl font-black tabular-nums md:text-5xl">
                     <CountdownDeadline
                       deadline={prossimaDeadline.deadline.toISOString()}
                     />
                   </div>
                 </div>
               ) : (
-                <div className="rounded-[24px] bg-white/10 p-5 ring-1 ring-white/15 md:p-6">
-                  <div className="text-2xl font-black">
-                    Nessuna prossima scadenza trovata
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-slate-300">
-                    Puoi comunque consultare classifiche, formazioni, rose e
-                    regolamento.
-                  </div>
+                <div className="mt-6 rounded-[24px] bg-white/10 p-5 text-sm font-semibold leading-6 text-blue-50 ring-1 ring-white/15 md:p-6">
+                  Puoi consultare classifiche, formazioni, rose e regolamento.
                 </div>
               )}
 
-              <div className="mt-6 rounded-2xl bg-blue-600 px-5 py-4 text-center text-base font-black tracking-wide text-white transition group-hover:bg-blue-500 md:text-lg">
-                {ctaLabel}
+              <div className="mt-6 rounded-2xl bg-white px-5 py-4 text-center text-lg font-black tracking-wide text-blue-700 transition group-hover:bg-blue-50">
+                GIOCA
               </div>
             </div>
           </Link>
 
-          <LiveRankingCard righe={ottavi} sottotitolo={liveSubtitle} />
+          {liveConfig ? (
+            <LiveRankingCard
+              righe={liveRanking}
+              titolo={liveConfig.titolo}
+              sottotitolo={liveSubtitle}
+              href={liveConfig.href}
+            />
+          ) : (
+            <Card>
+              <SectionEyebrow>Turno in svolgimento</SectionEyebrow>
+              <h2 className="text-2xl font-black tracking-tight text-slate-950">
+                Nessuna classifica live
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Quando inizierà il prossimo turno, la classifica live sarà
+                visibile qui.
+              </p>
+            </Card>
+          )}
         </section>
 
         <section className="mb-6 md:mb-8">
-          <GeneralRankingCard righe={generale} />
+          <RankingCard
+            titolo="🏆 Mata Mata Cup"
+            eyebrow="Competizione"
+            descrizione="Classifica della fase a eliminazione diretta."
+            righe={mataMata}
+            href="/classifiche/mata-mata-cup"
+          />
+        </section>
+
+        <section className="mb-6 md:mb-8">
+          <RankingCard
+            titolo="🌍 Classifica Generale"
+            eyebrow="Classifica"
+            descrizione="Classifica complessiva del Mondiale."
+            righe={generale}
+            href="/classifiche/generale"
+            maxRows={4}
+          />
         </section>
 
         <section className="grid gap-4 md:grid-cols-3">
