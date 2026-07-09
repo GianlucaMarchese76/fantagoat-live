@@ -163,12 +163,15 @@ const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
     .order("tipo")
     .order("ordine");
 
-  const rosaBloccata =
-  competizioneData.codice === "16ALTA" ||
-  competizioneData.codice === "16BASSA" ||
-  competizioneData.codice === "8BASSA" ||
-      competizioneData.codice === "8ALTA";
-        competizioneData.codice === "QUARTI";
+  const codiceCompetizione = String(competizioneData.codice ?? "").toUpperCase();
+
+const rosaBloccata = [
+  "16ALTA",
+  "16BASSA",
+  "8ALTA",
+  "8BASSA",
+  "QUARTI",
+].includes(codiceCompetizione);
 
     return (
     <CreaRosaClient
