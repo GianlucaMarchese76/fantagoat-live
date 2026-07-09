@@ -32,6 +32,10 @@ function parseFileName(filePath: string) {
     return { giornata: "ottavi", blocco: null as string | null };
   }
 
+  if (baseNorm === "quarti") {
+  return { giornata: "quarti", blocco: null as string | null };
+}
+
   throw new Error(
     `Nome file non valido: ${base}. Usa formato tipo G2AF.xlsx, sedicesimi.xlsx oppure ottavi.xlsx`
   );
@@ -101,7 +105,7 @@ async function main() {
 
   if (!filePath) {
     throw new Error(
-      "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx oppure data/punteggi/sedicesimi.xlsx oppure data/punteggi/ottavi.xlsx"
+      "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx oppure data/punteggi/sedicesimi.xlsx oppure data/punteggi/ottavi.xlsx oppure data/punteggi/quarti.xlsx"
     );
   }
 
@@ -155,11 +159,12 @@ async function main() {
   });
 
   const usaMappaBlocchi =
-    giornata === "sedicesimi" || giornata === "ottavi";
+  giornata === "sedicesimi" ||
+  giornata === "ottavi";
 
-  const bloccoByNazionale = usaMappaBlocchi
-    ? await creaMappaBlocchiPerGiornata(giornata, rows)
-    : new Map<string, string>();
+const bloccoByNazionale = usaMappaBlocchi
+  ? await creaMappaBlocchiPerGiornata(giornata, rows)
+  : new Map<string, string>();
 
   if (!usaMappaBlocchi && !blocco) {
     throw new Error("Blocco non determinato.");
@@ -180,9 +185,15 @@ async function main() {
     const ruolo = normalizeRole(row.Position);
     const nazionale = normalizeTeam(row.Team);
 
-    const bloccoRecord = usaMappaBlocchi
-      ? bloccoByNazionale.get(nazionale)
-      : blocco;
+    let bloccoRecord: string | undefined;
+
+if (giornata === "quarti") {
+  bloccoRecord = "unico";
+} else if (usaMappaBlocchi) {
+  bloccoRecord = bloccoByNazionale.get(nazionale);
+} else {
+  bloccoRecord = blocco ?? undefined;
+}
 
     if (!bloccoRecord) {
       saltati.push(`${nazionale} - ${nome}`);
