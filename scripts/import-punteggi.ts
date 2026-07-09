@@ -166,9 +166,9 @@ const bloccoByNazionale = usaMappaBlocchi
   ? await creaMappaBlocchiPerGiornata(giornata, rows)
   : new Map<string, string>();
 
-  if (!usaMappaBlocchi && !blocco) {
-    throw new Error("Blocco non determinato.");
-  }
+  if (!usaMappaBlocchi && !blocco && giornata !== "quarti") {
+  throw new Error("Blocco non determinato.");
+}
 
   const records = [];
   const nonTrovati = [];

@@ -144,7 +144,7 @@ function getLiveConfig(giornata?: string | null) {
       titolo: "Classifica Live Quarti",
       label: "Quarti",
       codici: ["QUARTI"],
-      href: "/classifiche/quarti",
+      href: "/classifiche/QUARTI",
     };
   }
 
@@ -259,7 +259,13 @@ function SectionEyebrow({ children }: { children: ReactNode }) {
   );
 }
 
-function PodiumRow({ r }: { r: RigaAggregata }) {
+function PodiumRow({
+  r,
+  dettaglioCompetizione,
+}: {
+  r: RigaAggregata;
+  dettaglioCompetizione?: string;
+}) {
   const medal =
     r.posizione === 1
       ? "🥇"
@@ -269,12 +275,16 @@ function PodiumRow({ r }: { r: RigaAggregata }) {
           ? "🥉"
           : `${r.posizione}.`;
 
+  const href = dettaglioCompetizione
+    ? `/formazioni-competizione/${dettaglioCompetizione}/dettaglio?partecipante=${encodeURIComponent(
+        r.slug
+      )}`
+    : `/partecipanti/${encodeURIComponent(String(r.slug ?? "").toLowerCase())}`;
+
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
       <Link
-        href={`/partecipanti/${encodeURIComponent(
-          String(r.slug ?? "").toLowerCase()
-        )}`}
+        href={href}
         className="flex min-w-0 items-center gap-3 font-bold text-slate-900 hover:text-blue-600"
       >
         <span className="text-xl">{medal}</span>
@@ -314,11 +324,13 @@ function LiveRankingCard({
   titolo,
   sottotitolo,
   href,
+  dettaglioCompetizione,
 }: {
   righe: RigaAggregata[];
   titolo: string;
   sottotitolo: string;
   href: string;
+  dettaglioCompetizione?: string;
 }) {
   return (
     <Card>
@@ -338,7 +350,11 @@ function LiveRankingCard({
       ) : (
         <div className="grid gap-3">
           {righe.slice(0, 3).map((r) => (
-            <PodiumRow key={r.partecipante_id} r={r} />
+            <PodiumRow
+  key={r.partecipante_id}
+  r={r}
+  dettaglioCompetizione={dettaglioCompetizione}
+/>
           ))}
         </div>
       )}
@@ -828,6 +844,7 @@ const partiteProssimoTurno =
               titolo={liveConfig.titolo}
               sottotitolo={liveSubtitle}
               href={liveConfig.href}
+              dettaglioCompetizione={liveConfig.codici[0]}
             />
           ) : (
             <Card>
