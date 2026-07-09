@@ -168,6 +168,7 @@ const squadraB = String(p.squadra_b ?? "").trim().toUpperCase();
   competizioneData.codice === "16BASSA" ||
   competizioneData.codice === "8BASSA" ||
       competizioneData.codice === "8ALTA";
+        competizioneData.codice === "QUARTI";
 
     return (
     <CreaRosaClient

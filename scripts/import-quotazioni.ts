@@ -47,6 +47,17 @@ async function main() {
   console.log("Competizione:", competizione);
   console.log("Campo:", campo);
 
+  console.log(`🧹 Azzero ${campo}...`);
+
+  const { error: resetError } = await supabase
+    .from("giocatori")
+    .update({ [campo]: null })
+    .not("id", "is", null);
+
+  if (resetError) throw resetError;
+
+  console.log("✅ Reset completato");
+
   const filePath = path.join(
     process.cwd(),
     "data",
@@ -70,7 +81,10 @@ async function main() {
   for (const row of rows) {
     const nome = String(row["Name"] ?? "").trim();
     const nazionale = String(row["Team"] ?? "").trim();
-    const ruolo = String(row["Role"] ?? row["Ruolo"] ?? row["Position"] ?? "").trim();
+    const ruolo = String(
+      row["Role"] ?? row["Ruolo"] ?? row["Position"] ?? ""
+    ).trim();
+
     const quotazione = parseQuota(row["Quotation"]);
 
     if (!nome || !nazionale || isNaN(quotazione) || quotazione <= 0) {
@@ -112,18 +126,25 @@ async function main() {
 
     aggiornati += data.length;
 
-    console.log(
-      `✅ ${nome} (${nazionale}) ${ruolo || ""} -> ${quotazione}`
-    );
+    console.log(`✅ ${nome} (${nazionale}) ${ruolo || ""} -> ${quotazione}`);
   }
+
+  const { count: valorizzati } = await supabase
+    .from("giocatori")
+    .select("*", { count: "exact", head: true })
+    .not(campo, "is", null);
 
   console.log("---------------------------");
   console.log("Righe Excel:", rows.length);
   console.log("Aggiornati:", aggiornati);
+  console.log("Valorizzati nel DB:", valorizzati ?? 0);
   console.log("Non trovati:", nonTrovati);
   console.log("Ambigui:", ambigui);
   console.log("Saltati:", saltati);
   console.log("Import terminato");
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
