@@ -730,41 +730,36 @@ export default async function Home() {
       )[0];
 
   const partiteProssimoTurno = competizioneGiocabile
-    ? (partite ?? [])
-        .filter(
-          (p) =>
-            String(p.giornata).toLowerCase() ===
-              String(
-                competizioneGiocabile.giornata
-              ).toLowerCase() &&
-            String(p.blocco).toLowerCase() ===
-              String(
-                competizioneGiocabile.blocco
-              ).toLowerCase()
-        )
-        .reduce(
-          (acc, row) => {
-            if (
-              !acc.some(
-                (p) => p.partita === row.partita
-              )
-            ) {
-              acc.push({
-                partita: Number(row.partita),
-                casa: String(row.nazionale ?? ""),
-                ospite: String(row.avversaria ?? ""),
-              });
-            }
+  ? (partite ?? [])
+      .filter(
+        (p) =>
+          String(p.giornata).toLowerCase() ===
+            String(competizioneGiocabile.giornata).toLowerCase() &&
+          String(p.blocco).toLowerCase() ===
+            String(competizioneGiocabile.blocco).toLowerCase()
+      )
+      .reduce(
+        (acc, row) => {
+          const numeroPartita = Number(row.partita);
 
-            return acc;
-          },
-          [] as {
-            partita: number;
-            casa: string;
-            ospite: string;
-          }[]
-        )
-    : [];
+          if (!acc.some((p) => p.partita === numeroPartita)) {
+            acc.push({
+              partita: numeroPartita,
+              casa: String(row.nazionale ?? ""),
+              ospite: String(row.avversaria ?? ""),
+            });
+          }
+
+          return acc;
+        },
+        [] as {
+          partita: number;
+          casa: string;
+          ospite: string;
+        }[]
+      )
+      .sort((a, b) => a.partita - b.partita)
+  : [];
 
   const codiceCompetizioneHome = competizioneGiocabile
     ? CODICE_COMPETIZIONE_BY_CALENDARIO[
