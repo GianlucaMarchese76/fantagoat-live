@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
+
 import { supabase } from "../lib/supabase";
 import { statoCompetizione } from "../lib/fantagoat";
 import { COOKIE_PARTECIPANTE } from "../lib/fantagoat/sessione";
@@ -16,6 +17,7 @@ const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
   "ottavi|1-4": "8ALTA",
   "ottavi|5-8": "8BASSA",
   "quarti|unico": "QUARTI",
+  "semifinale|unico": "SEMIFINALI",
   "semifinali|unico": "SEMIFINALI",
   "terzo_posto|unico": "TERZO_POSTO",
   "finale|unico": "FINALE",
@@ -68,6 +70,8 @@ type RigaAggregata = {
   punti: number;
 };
 
+type VincitoriStorici = Record<string, RigaAggregata | null>;
+
 function chiaveCalendario(giornata: string, blocco: string) {
   return `${String(giornata).toLowerCase()}|${String(blocco).toLowerCase()}`;
 }
@@ -89,30 +93,40 @@ function nomeCompetizione(giornata: string, blocco: string) {
       return b === "af"
         ? "Giornata 1 · Gironi A-F"
         : "Giornata 1 · Gironi G-L";
+
     case "g2":
       return b === "af"
         ? "Giornata 2 · Gironi A-F"
         : "Giornata 2 · Gironi G-L";
+
     case "g3":
       return b === "af"
         ? "Giornata 3 · Gironi A-F"
         : "Giornata 3 · Gironi G-L";
+
     case "sedicesimi":
       return b === "1-8"
         ? "Sedicesimi · Tabellone 1-8"
         : "Sedicesimi · Tabellone 9-16";
+
     case "ottavi":
       return b === "1-4"
         ? "Ottavi · Tabellone 1-4"
         : "Ottavi · Tabellone 5-8";
+
     case "quarti":
       return "Quarti di Finale";
+
+    case "semifinale":
     case "semifinali":
       return "Semifinali";
+
     case "terzo_posto":
       return "Finale 3° Posto";
+
     case "finale":
       return "Finale";
+
     default:
       return `${giornata} ${blocco}`;
   }
@@ -144,11 +158,11 @@ function getLiveConfig(giornata?: string | null) {
       titolo: "Classifica Live Quarti",
       label: "Quarti",
       codici: ["QUARTI"],
-      href: "/classifiche/QUARTI",
+      href: "/classifiche/quarti",
     };
   }
 
-  if (g === "semifinali") {
+  if (g === "semifinale" || g === "semifinali") {
     return {
       titolo: "Classifica Live Semifinali",
       label: "Semifinali",
@@ -170,7 +184,10 @@ function getLiveConfig(giornata?: string | null) {
 }
 
 function getPartecipanteFromJoin(r: RigaClassifica) {
-  if (Array.isArray(r.partecipanti)) return r.partecipanti[0] ?? null;
+  if (Array.isArray(r.partecipanti)) {
+    return r.partecipanti[0] ?? null;
+  }
+
   return r.partecipanti ?? null;
 }
 
@@ -212,27 +229,37 @@ async function getClassificaAggregata(
   for (const r of (data ?? []) as RigaClassifica[]) {
     if (!r.partecipante_id) continue;
 
-    const p = getPartecipanteFromJoin(r);
-    const old = map.get(r.partecipante_id);
+    const partecipante = getPartecipanteFromJoin(r);
+    const precedente = map.get(r.partecipante_id);
 
     map.set(r.partecipante_id, {
       partecipante_id: r.partecipante_id,
-      partecipante: p?.nome ?? "Partecipante",
-      slug: p?.slug ?? slugPartecipante(p?.nome ?? ""),
-      punti: (old?.punti ?? 0) + Number(r.punti ?? 0),
+      partecipante: partecipante?.nome ?? "Partecipante",
+      slug:
+        partecipante?.slug ??
+        slugPartecipante(partecipante?.nome ?? ""),
+      punti: (precedente?.punti ?? 0) + Number(r.punti ?? 0),
     });
   }
 
   return Array.from(map.values())
     .sort(
       (a, b) =>
-        b.punti - a.punti || a.partecipante.localeCompare(b.partecipante)
+        b.punti - a.punti ||
+        a.partecipante.localeCompare(b.partecipante)
     )
     .map((r, index) => ({
       posizione: index + 1,
       ...r,
       punti: Number(r.punti.toFixed(1)),
     }));
+}
+
+async function getVincitoreCompetizione(
+  codice: string
+): Promise<RigaAggregata | null> {
+  const classifica = await getClassificaAggregata([codice]);
+  return classifica[0] ?? null;
 }
 
 function Card({
@@ -276,10 +303,12 @@ function PodiumRow({
           : `${r.posizione}.`;
 
   const href = dettaglioCompetizione
-    ? `/formazioni-competizione/${dettaglioCompetizione}/dettaglio?partecipante=${encodeURIComponent(
-        r.slug
-      )}`
-    : `/partecipanti/${encodeURIComponent(String(r.slug ?? "").toLowerCase())}`;
+    ? `/formazioni-competizione/${encodeURIComponent(
+        dettaglioCompetizione
+      )}/dettaglio?partecipante=${encodeURIComponent(r.slug)}`
+    : `/partecipanti/${encodeURIComponent(
+        String(r.slug ?? "").toLowerCase()
+      )}`;
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
@@ -301,7 +330,9 @@ function PodiumRow({
 function RankingRow({ r }: { r: RigaAggregata }) {
   return (
     <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-slate-100 px-1 py-3 last:border-b-0">
-      <div className="text-sm font-black text-slate-400">{r.posizione}</div>
+      <div className="text-sm font-black text-slate-400">
+        {r.posizione}
+      </div>
 
       <Link
         href={`/partecipanti/${encodeURIComponent(
@@ -316,6 +347,141 @@ function RankingRow({ r }: { r: RigaAggregata }) {
         {formatPunti(r.punti)}
       </div>
     </div>
+  );
+}
+
+function HistoricalCompetitionLink({
+  href,
+  label,
+  vincitore,
+}: {
+  href: string;
+  label: string;
+  vincitore: RigaAggregata | null;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-xl bg-white px-3 py-3 text-center transition hover:bg-blue-50"
+    >
+      <span className="block text-xs font-black text-slate-700">
+        {label}
+      </span>
+
+      {vincitore ? (
+        <span className="mt-1.5 block text-[11px] font-semibold leading-4 text-slate-400">
+          {vincitore.partecipante}
+          <span className="mx-1">·</span>
+          {formatPunti(vincitore.punti)}
+        </span>
+      ) : (
+        <span className="mt-1.5 block text-[11px] font-semibold text-slate-300">
+          —
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function HistoricalRankingsBlock({
+  vincitoriStorici,
+}: {
+  vincitoriStorici: VincitoriStorici;
+}) {
+  return (
+    <Card>
+      <SectionEyebrow>Archivio classifiche</SectionEyebrow>
+
+      <h2 className="mb-5 text-2xl font-black tracking-tight text-slate-950">
+        Classifiche delle fasi concluse
+      </h2>
+
+      <div className="grid gap-4">
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <div className="mb-3 text-sm font-black text-slate-800">
+            Classifiche Prima Fase
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <HistoricalCompetitionLink
+              href="/classifiche/G1AF"
+              label="G1 · Gironi A-F"
+              vincitore={vincitoriStorici.G1AF}
+            />
+
+            <HistoricalCompetitionLink
+              href="/classifiche/G1GL"
+              label="G1 · Gironi G-L"
+              vincitore={vincitoriStorici.G1GL}
+            />
+
+            <HistoricalCompetitionLink
+              href="/classifiche/G2AF"
+              label="G2 · Gironi A-F"
+              vincitore={vincitoriStorici.G2AF}
+            />
+
+            <HistoricalCompetitionLink
+              href="/classifiche/G2GL"
+              label="G2 · Gironi G-L"
+              vincitore={vincitoriStorici.G2GL}
+            />
+
+            <HistoricalCompetitionLink
+              href="/classifiche/G3AF"
+              label="G3 · Gironi A-F"
+              vincitore={vincitoriStorici.G3AF}
+            />
+
+            <HistoricalCompetitionLink
+              href="/classifiche/G3GL"
+              label="G3 · Gironi G-L"
+              vincitore={vincitoriStorici.G3GL}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <div className="mb-3 text-sm font-black text-slate-800">
+            Classifiche Sedicesimi
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <HistoricalCompetitionLink
+              href="/classifiche/16ALTA"
+              label="Tabellone 1-8"
+              vincitore={vincitoriStorici["16ALTA"]}
+            />
+
+            <HistoricalCompetitionLink
+              href="/classifiche/16BASSA"
+              label="Tabellone 9-16"
+              vincitore={vincitoriStorici["16BASSA"]}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <div className="mb-3 text-sm font-black text-slate-800">
+            Classifiche Ottavi
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <HistoricalCompetitionLink
+              href="/classifiche/8ALTA"
+              label="Tabellone 1-4"
+              vincitore={vincitoriStorici["8ALTA"]}
+            />
+
+            <HistoricalCompetitionLink
+              href="/classifiche/8BASSA"
+              label="Tabellone 5-8"
+              vincitore={vincitoriStorici["8BASSA"]}
+            />
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -340,7 +506,10 @@ function LiveRankingCard({
         <h2 className="text-2xl font-black tracking-tight text-slate-950">
           {titolo}
         </h2>
-        <p className="mt-1 text-sm leading-6 text-slate-500">{sottotitolo}</p>
+
+        <p className="mt-1 text-sm leading-6 text-slate-500">
+          {sottotitolo}
+        </p>
       </div>
 
       {righe.length === 0 ? (
@@ -351,37 +520,21 @@ function LiveRankingCard({
         <div className="grid gap-3">
           {righe.slice(0, 3).map((r) => (
             <PodiumRow
-  key={r.partecipante_id}
-  r={r}
-  dettaglioCompetizione={dettaglioCompetizione}
-/>
+              key={r.partecipante_id}
+              r={r}
+              dettaglioCompetizione={dettaglioCompetizione}
+            />
           ))}
         </div>
       )}
 
-      <div className="mt-6 grid gap-3 border-t border-slate-100 pt-5">
+      <div className="mt-6 border-t border-slate-100 pt-5">
         <Link
           href={href}
-          className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-slate-800"
+          className="block rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-slate-800"
         >
           Vedi classifica completa
         </Link>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Link
-            href="/classifiche/prima-fase"
-            className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
-          >
-            Classifica Prima Fase →
-          </Link>
-
-          <Link
-            href="/classifiche/sedicesimi"
-            className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
-          >
-            Classifica Sedicesimi →
-          </Link>
-        </div>
       </div>
     </Card>
   );
@@ -402,17 +555,22 @@ function RankingCard({
   href: string;
   maxRows?: number;
 }) {
-  const rows = typeof maxRows === "number" ? righe.slice(0, maxRows) : righe;
+  const rows =
+    typeof maxRows === "number" ? righe.slice(0, maxRows) : righe;
 
   return (
     <Card>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <SectionEyebrow>{eyebrow}</SectionEyebrow>
+
           <h2 className="text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
             {titolo}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">{descrizione}</p>
+
+          <p className="mt-1 text-sm text-slate-500">
+            {descrizione}
+          </p>
         </div>
 
         <Link
@@ -437,7 +595,10 @@ function RankingCard({
 
           <div>
             {rows.map((r) => (
-              <RankingRow key={r.partecipante_id} r={r} />
+              <RankingRow
+                key={r.partecipante_id}
+                r={r}
+              />
             ))}
           </div>
         </div>
@@ -470,8 +631,13 @@ function QuickLink({
         {icon}
       </div>
 
-      <div className="text-xl font-black text-slate-950">{title}</div>
-      <div className="mt-1 text-sm leading-6 text-slate-500">{description}</div>
+      <div className="text-xl font-black text-slate-950">
+        {title}
+      </div>
+
+      <div className="mt-1 text-sm leading-6 text-slate-500">
+        {description}
+      </div>
 
       <div className="mt-4 text-sm font-black text-blue-600 group-hover:text-blue-700">
         Apri →
@@ -482,7 +648,9 @@ function QuickLink({
 
 export default async function Home() {
   const cookieStore = await cookies();
-  const slugLoggato = cookieStore.get(COOKIE_PARTECIPANTE)?.value ?? null;
+
+  const slugLoggato =
+    cookieStore.get(COOKIE_PARTECIPANTE)?.value ?? null;
 
   const { data: partecipanteLoggato } = slugLoggato
     ? await supabase
@@ -499,9 +667,11 @@ export default async function Home() {
     .order("blocco");
 
   const { data: partite } = await supabase
-  .from("calendario_partite")
-  .select("giornata, blocco, partita, kickoff, fine_partita, nazionale, avversaria")
-  .order("kickoff");
+    .from("calendario_partite")
+    .select(
+      "giornata, blocco, partita, kickoff, fine_partita, nazionale, avversaria"
+    )
+    .order("kickoff");
 
   const now = new Date();
 
@@ -516,12 +686,17 @@ export default async function Home() {
   >();
 
   for (const p of partite ?? []) {
-    if (!p.giornata || !p.blocco || !p.kickoff) continue;
+    if (!p.giornata || !p.blocco || !p.kickoff) {
+      continue;
+    }
 
     const key = chiaveCalendario(p.giornata, p.blocco);
     const kickoff = new Date(p.kickoff);
 
-    if (!blocchi.has(key) || kickoff < blocchi.get(key)!.primaPartita) {
+    if (
+      !blocchi.has(key) ||
+      kickoff < blocchi.get(key)!.primaPartita
+    ) {
       blocchi.set(key, {
         giornata: p.giornata,
         blocco: p.blocco,
@@ -533,7 +708,10 @@ export default async function Home() {
 
   const prossimaDeadline = Array.from(blocchi.values())
     .filter((b) => now < b.deadline)
-    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime())[0];
+    .sort(
+      (a, b) =>
+        a.deadline.getTime() - b.deadline.getTime()
+    )[0];
 
   const competizioneGiocabile =
     prossimaDeadline ??
@@ -543,28 +721,49 @@ export default async function Home() {
           CODICE_COMPETIZIONE_BY_CALENDARIO[
             chiaveCalendario(b.giornata, b.blocco)
           ];
+
         return Boolean(codice);
       })
-      .sort((a, b) => b.primaPartita.getTime() - a.primaPartita.getTime())[0];
+      .sort(
+        (a, b) =>
+          b.primaPartita.getTime() - a.primaPartita.getTime()
+      )[0];
 
-const partiteProssimoTurno =
-  competizioneGiocabile
+  const partiteProssimoTurno = competizioneGiocabile
     ? (partite ?? [])
         .filter(
           (p) =>
-            p.giornata === competizioneGiocabile.giornata &&
-            p.blocco === competizioneGiocabile.blocco
+            String(p.giornata).toLowerCase() ===
+              String(
+                competizioneGiocabile.giornata
+              ).toLowerCase() &&
+            String(p.blocco).toLowerCase() ===
+              String(
+                competizioneGiocabile.blocco
+              ).toLowerCase()
         )
-        .reduce((acc, row) => {
-          if (!acc.some((p) => p.partita === row.partita)) {
-            acc.push({
-              partita: row.partita,
-              casa: row.nazionale,
-              ospite: row.avversaria,
-            });
-          }
-          return acc;
-        }, [] as { partita: number; casa: string; ospite: string }[])
+        .reduce(
+          (acc, row) => {
+            if (
+              !acc.some(
+                (p) => p.partita === row.partita
+              )
+            ) {
+              acc.push({
+                partita: Number(row.partita),
+                casa: String(row.nazionale ?? ""),
+                ospite: String(row.avversaria ?? ""),
+              });
+            }
+
+            return acc;
+          },
+          [] as {
+            partita: number;
+            casa: string;
+            ospite: string;
+          }[]
+        )
     : [];
 
   const codiceCompetizioneHome = competizioneGiocabile
@@ -576,13 +775,14 @@ const partiteProssimoTurno =
       ]
     : null;
 
-  const { data: competizioneAttiva } = codiceCompetizioneHome
-    ? await supabase
-        .from("competizioni")
-        .select("*")
-        .eq("codice", codiceCompetizioneHome)
-        .maybeSingle()
-    : { data: null };
+  const { data: competizioneAttiva } =
+    codiceCompetizioneHome
+      ? await supabase
+          .from("competizioni")
+          .select("*")
+          .eq("codice", codiceCompetizioneHome)
+          .maybeSingle()
+      : { data: null };
 
   let hrefSchiera = "/login";
 
@@ -593,7 +793,8 @@ const partiteProssimoTurno =
       .eq("competizione_id", competizioneAttiva.id)
       .eq("partecipante_id", partecipanteLoggato.id);
 
-    const rosaCompleta = (rosaCompetizione ?? []).length === 16;
+    const rosaCompleta =
+      (rosaCompetizione ?? []).length === 16;
 
     hrefSchiera = rosaCompleta
       ? `/formazioni-competizione/${codiceCompetizioneHome}?partecipante=${encodeURIComponent(
@@ -606,28 +807,50 @@ const partiteProssimoTurno =
 
   const competizioneLive =
     Array.from(blocchi.values()).find((b) => {
-      const c = competizioniConcluse?.find(
-        (x) => x.giornata === b.giornata && x.blocco === b.blocco
-      );
+      const configurazione =
+        competizioniConcluse?.find(
+          (x) =>
+            String(x.giornata).toLowerCase() ===
+              String(b.giornata).toLowerCase() &&
+            String(x.blocco).toLowerCase() ===
+              String(b.blocco).toLowerCase()
+        );
 
-      return c && statoCompetizione(c.conclusa, b.primaPartita, now) === "LIVE";
+      return (
+        configurazione &&
+        statoCompetizione(
+          configurazione.conclusa,
+          b.primaPartita,
+          now
+        ) === "LIVE"
+      );
     }) ?? null;
 
-  const liveConfig = getLiveConfig(competizioneLive?.giornata);
+  const liveConfig = getLiveConfig(
+    competizioneLive?.giornata
+  );
 
   const partiteLiveFase = competizioneLive
     ? (partite ?? []).filter(
         (p) =>
           String(p.giornata).toLowerCase() ===
-          String(competizioneLive.giornata).toLowerCase()
+          String(
+            competizioneLive.giornata
+          ).toLowerCase()
       )
     : [];
 
-  const partiteTotaliLive = new Set(partiteLiveFase.map((p) => p.partita)).size;
+  const partiteTotaliLive = new Set(
+    partiteLiveFase.map((p) => p.partita)
+  ).size;
 
   const partiteGiocateLive = new Set(
     partiteLiveFase
-      .filter((p) => p.fine_partita && new Date(p.fine_partita) <= now)
+      .filter(
+        (p) =>
+          p.fine_partita &&
+          new Date(p.fine_partita) <= now
+      )
       .map((p) => p.partita)
   ).size;
 
@@ -636,19 +859,65 @@ const partiteProssimoTurno =
     partiteTotaliLive - partiteGiocateLive
   );
 
-  const [generale, mataMata, liveRanking] = await Promise.all([
+  const [
+    generale,
+    mataMata,
+    liveRanking,
+    vincitoreG1AF,
+    vincitoreG1GL,
+    vincitoreG2AF,
+    vincitoreG2GL,
+    vincitoreG3AF,
+    vincitoreG3GL,
+    vincitore16ALTA,
+    vincitore16BASSA,
+    vincitore8ALTA,
+    vincitore8BASSA,
+  ] = await Promise.all([
     getClassificaAggregata(COMPETIZIONI_GENERALE),
     getClassificaAggregata(COMPETIZIONI_MATA_MATA),
-    liveConfig ? getClassificaAggregata(liveConfig.codici) : Promise.resolve([]),
+
+    liveConfig
+      ? getClassificaAggregata(liveConfig.codici)
+      : Promise.resolve([]),
+
+    getVincitoreCompetizione("G1AF"),
+    getVincitoreCompetizione("G1GL"),
+    getVincitoreCompetizione("G2AF"),
+    getVincitoreCompetizione("G2GL"),
+    getVincitoreCompetizione("G3AF"),
+    getVincitoreCompetizione("G3GL"),
+    getVincitoreCompetizione("16ALTA"),
+    getVincitoreCompetizione("16BASSA"),
+    getVincitoreCompetizione("8ALTA"),
+    getVincitoreCompetizione("8BASSA"),
   ]);
 
+  const vincitoriStorici: VincitoriStorici = {
+    G1AF: vincitoreG1AF,
+    G1GL: vincitoreG1GL,
+    G2AF: vincitoreG2AF,
+    G2GL: vincitoreG2GL,
+    G3AF: vincitoreG3AF,
+    G3GL: vincitoreG3GL,
+    "16ALTA": vincitore16ALTA,
+    "16BASSA": vincitore16BASSA,
+    "8ALTA": vincitore8ALTA,
+    "8BASSA": vincitore8BASSA,
+  };
+
   const posizioneUtenteGenerale = partecipanteLoggato
-    ? generale.find((r) => r.partecipante_id === partecipanteLoggato.id)
-        ?.posizione
+    ? generale.find(
+        (r) =>
+          r.partecipante_id === partecipanteLoggato.id
+      )?.posizione
     : null;
 
   const nomeProssimoTurno = prossimaDeadline
-    ? nomeCompetizione(prossimaDeadline.giornata, prossimaDeadline.blocco)
+    ? nomeCompetizione(
+        prossimaDeadline.giornata,
+        prossimaDeadline.blocco
+      )
     : "Nessuna scadenza attiva";
 
   const liveSubtitle = liveConfig
@@ -659,7 +928,10 @@ const partiteProssimoTurno =
     <main className="min-h-screen bg-[#F6F7FB] px-4 py-5 text-slate-950 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex items-center justify-between gap-4 md:mb-8">
-          <Link href="/" className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-3"
+          >
             <Image
               src="/logo-fantagoat-2026.png"
               alt="FantaGOAT"
@@ -673,6 +945,7 @@ const partiteProssimoTurno =
               <h1 className="text-2xl font-black leading-none tracking-tight md:text-4xl">
                 FantaGOAT Live
               </h1>
+
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 Fantacalcio Live 2026
               </p>
@@ -686,14 +959,20 @@ const partiteProssimoTurno =
                   👤 {partecipanteLoggato.nome}
                 </div>
 
-                <form method="post" action="/api/logout">
+                <form
+                  method="post"
+                  action="/api/logout"
+                >
                   <button className="text-sm font-black text-blue-600 hover:text-blue-700">
                     Esci
                   </button>
                 </form>
               </div>
             ) : (
-              <Link href="/login" className="text-sm font-black text-blue-600">
+              <Link
+                href="/login"
+                className="text-sm font-black text-blue-600"
+              >
                 Accedi
               </Link>
             )}
@@ -701,41 +980,48 @@ const partiteProssimoTurno =
         </header>
 
         <section className="mb-6 rounded-[28px] bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
-  {partecipanteLoggato && (
-    <div className="mb-4 text-left text-sm font-black uppercase tracking-[0.12em] text-slate-800">
-      {partecipanteLoggato.nome}
-    </div>
-  )}
+          {partecipanteLoggato && (
+            <div className="mb-4 text-left text-sm font-black uppercase tracking-[0.12em] text-slate-800">
+              {partecipanteLoggato.nome}
+            </div>
+          )}
 
-  <div className="grid grid-cols-3 gap-3 text-center">
-    <div>
-      <div className="text-xs font-black uppercase tracking-wide text-slate-400">
-        Live
-      </div>
-      <div className="mt-1 text-lg font-black">
-        {liveConfig?.label ?? "—"}
-      </div>
-    </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <div className="text-xs font-black uppercase tracking-wide text-slate-400">
+                Live
+              </div>
 
-    <div>
-      <div className="text-xs font-black uppercase tracking-wide text-slate-400">
-        Partite
-      </div>
-      <div className="mt-1 text-lg font-black">
-        {liveConfig ? `${partiteGiocateLive}/${partiteTotaliLive}` : "—"}
-      </div>
-    </div>
+              <div className="mt-1 text-lg font-black">
+                {liveConfig?.label ?? "—"}
+              </div>
+            </div>
 
-    <div>
-      <div className="text-xs font-black uppercase tracking-wide text-slate-400">
-        Generale
-      </div>
-      <div className="mt-1 text-lg font-black">
-        {posizioneUtenteGenerale ? `#${posizioneUtenteGenerale}` : "—"}
-      </div>
-    </div>
-  </div>
-</section>
+            <div>
+              <div className="text-xs font-black uppercase tracking-wide text-slate-400">
+                Partite
+              </div>
+
+              <div className="mt-1 text-lg font-black">
+                {liveConfig
+                  ? `${partiteGiocateLive}/${partiteTotaliLive}`
+                  : "—"}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-black uppercase tracking-wide text-slate-400">
+                Generale
+              </div>
+
+              <div className="mt-1 text-lg font-black">
+                {posizioneUtenteGenerale
+                  ? `#${posizioneUtenteGenerale}`
+                  : "—"}
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section className="mb-6 grid gap-5 lg:grid-cols-[1.25fr_1fr] md:mb-8">
           <Link
@@ -751,60 +1037,60 @@ const partiteProssimoTurno =
                 {nomeProssimoTurno}
               </h2>
 
-{partiteProssimoTurno.length > 0 && (
-  <div className="mt-6 rounded-2xl bg-white/10 p-4">
-    <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-blue-100">
-      Tabellone
-    </div>
+              {partiteProssimoTurno.length > 0 && (
+                <div className="mt-6 rounded-2xl bg-white/10 p-4">
+                  <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-blue-100">
+                    Tabellone
+                  </div>
 
-    <div className="space-y-2">
-  {partiteProssimoTurno.map((p) => (
-    <div
-      key={p.partita}
-      className="grid grid-cols-[1fr_auto_1fr] items-center gap-3"
-    >
-      {/* Squadra di casa */}
-      <div className="flex items-center justify-end gap-2">
-        <div className="flex h-4 w-6 items-center justify-center">
-          <Image
-            src={`/bandiere/${p.casa}.svg`}
-            alt={p.casa}
-            width={24}
-            height={16}
-            className="max-h-4 w-auto"
-          />
-        </div>
+                  <div className="space-y-2">
+                    {partiteProssimoTurno.map(
+                      (partita) => (
+                        <div
+                          key={partita.partita}
+                          className="grid grid-cols-[1fr_auto_1fr] items-center gap-3"
+                        >
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="flex h-4 w-6 items-center justify-center">
+                              <Image
+                                src={`/bandiere/${partita.casa}.svg`}
+                                alt={partita.casa}
+                                width={24}
+                                height={16}
+                                className="max-h-4 w-auto"
+                              />
+                            </div>
 
-        <span className="w-8 text-left font-black tracking-wide">
-          {p.casa}
-        </span>
-      </div>
+                            <span className="w-8 text-left font-black tracking-wide">
+                              {partita.casa}
+                            </span>
+                          </div>
 
-      {/* VS */}
-      <div className="text-center text-sm font-bold text-blue-100">
-        vs
-      </div>
+                          <div className="text-center text-sm font-bold text-blue-100">
+                            vs
+                          </div>
 
-      {/* Squadra ospite */}
-      <div className="flex items-center gap-2">
-        <div className="flex h-4 w-6 items-center justify-center">
-          <Image
-            src={`/bandiere/${p.ospite}.svg`}
-            alt={p.ospite}
-            width={24}
-            height={16}
-            className="max-h-4 w-auto"
-          />
-        </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-4 w-6 items-center justify-center">
+                              <Image
+                                src={`/bandiere/${partita.ospite}.svg`}
+                                alt={partita.ospite}
+                                width={24}
+                                height={16}
+                                className="max-h-4 w-auto"
+                              />
+                            </div>
 
-        <span className="w-8 text-left font-black tracking-wide">
-          {p.ospite}
-        </span>
-      </div>
-    </div>
-  ))}
-</div>  </div>
-)}
+                            <span className="w-8 text-left font-black tracking-wide">
+                              {partita.ospite}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
 
               {prossimaDeadline ? (
                 <div className="mt-6 rounded-[24px] bg-white/10 p-5 ring-1 ring-white/15 md:p-6">
@@ -813,14 +1099,17 @@ const partiteProssimoTurno =
                   </div>
 
                   <div className="mt-1 text-xl font-black">
-                    {prossimaDeadline.deadline.toLocaleString("it-IT", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                      timeZone: "Europe/Rome",
-                    })}
+                    {prossimaDeadline.deadline.toLocaleString(
+                      "it-IT",
+                      {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                        timeZone: "Europe/Rome",
+                      }
+                    )}
                   </div>
 
-                  <div className="mt-6 rounded-2xl bg-white/10 px-4 py-4 text-center text-4xl font-black tabular-nums md:text-5xl">
+                  <div className="mt-6 rounded-2xl bg-white/10 px-4 py-4 text-center text-3xl font-black tabular-nums md:text-4xl">
                     <CountdownDeadline
                       deadline={prossimaDeadline.deadline.toISOString()}
                     />
@@ -828,7 +1117,8 @@ const partiteProssimoTurno =
                 </div>
               ) : (
                 <div className="mt-6 rounded-[24px] bg-white/10 p-5 text-sm font-semibold leading-6 text-blue-50 ring-1 ring-white/15 md:p-6">
-                  Puoi consultare classifiche, formazioni, rose e regolamento.
+                  Puoi consultare classifiche, formazioni, rose e
+                  regolamento.
                 </div>
               )}
 
@@ -844,17 +1134,23 @@ const partiteProssimoTurno =
               titolo={liveConfig.titolo}
               sottotitolo={liveSubtitle}
               href={liveConfig.href}
-              dettaglioCompetizione={liveConfig.codici[0]}
+              dettaglioCompetizione={
+                liveConfig.codici[0]
+              }
             />
           ) : (
             <Card>
-              <SectionEyebrow>Turno in svolgimento</SectionEyebrow>
+              <SectionEyebrow>
+                Turno in svolgimento
+              </SectionEyebrow>
+
               <h2 className="text-2xl font-black tracking-tight text-slate-950">
                 Nessuna classifica live
               </h2>
+
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Quando inizierà il prossimo turno, la classifica live sarà
-                visibile qui.
+                Quando inizierà il prossimo turno, la classifica live
+                sarà visibile qui.
               </p>
             </Card>
           )}
@@ -878,6 +1174,12 @@ const partiteProssimoTurno =
             righe={generale}
             href="/classifiche/generale"
             maxRows={4}
+          />
+        </section>
+
+        <section className="mb-6 md:mb-8">
+          <HistoricalRankingsBlock
+            vincitoriStorici={vincitoriStorici}
           />
         </section>
 
