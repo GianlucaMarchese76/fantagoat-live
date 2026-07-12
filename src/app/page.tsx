@@ -48,6 +48,39 @@ const COMPETIZIONI_GENERALE = [
   ...COMPETIZIONI_MATA_MATA,
 ];
 
+const FASI_FINALI = [
+  {
+    giornata: "quarti",
+    codice: "QUARTI",
+    titolo: "Classifiche Quarti",
+    label: "Quarti di Finale",
+    href: "/classifiche/quarti",
+  },
+  {
+    giornata: "semifinali",
+    codice: "SEMIFINALI",
+    titolo: "Classifiche Semifinali",
+    label: "Semifinali",
+    href: "/classifiche/semifinali",
+  },
+  {
+    giornata: "terzo_posto",
+    codice: "TERZO_POSTO",
+    titolo: "Classifica Finale 3° Posto",
+    label: "Finale 3° Posto",
+    href: "/classifiche/terzo-posto",
+  },
+  {
+    giornata: "finale",
+    codice: "FINALE",
+    titolo: "Classifica Finale",
+    label: "Finale",
+    href: "/classifiche/finale",
+  },
+] as const;
+
+type CodiceFaseFinale = (typeof FASI_FINALI)[number]["codice"];
+
 type PartecipanteJoin = {
   id: string;
   nome: string;
@@ -72,8 +105,32 @@ type RigaAggregata = {
 
 type VincitoriStorici = Record<string, RigaAggregata | null>;
 
+type FaseFinaleStato = (typeof FASI_FINALI)[number] & {
+  primaPartita: Date | null;
+  ultimaFine: Date | null;
+  iniziata: boolean;
+  conclusa: boolean;
+};
+
+function normalizzaGiornata(giornata: string | null | undefined) {
+  const value = String(giornata ?? "").trim().toLowerCase();
+
+  if (value === "semifinale") return "semifinali";
+
+  if (
+    value === "terzoposto" ||
+    value === "terzo-posto" ||
+    value === "finale_3_posto" ||
+    value === "finale-3-posto"
+  ) {
+    return "terzo_posto";
+  }
+
+  return value;
+}
+
 function chiaveCalendario(giornata: string, blocco: string) {
-  return `${String(giornata).toLowerCase()}|${String(blocco).toLowerCase()}`;
+  return `${normalizzaGiornata(giornata)}|${String(blocco).toLowerCase()}`;
 }
 
 function slugPartecipante(nome: string) {
@@ -85,7 +142,7 @@ function formatPunti(punti: number) {
 }
 
 function nomeCompetizione(giornata: string, blocco: string) {
-  const g = String(giornata ?? "").toLowerCase();
+  const g = normalizzaGiornata(giornata);
   const b = String(blocco ?? "").toLowerCase();
 
   switch (g) {
@@ -133,7 +190,7 @@ function nomeCompetizione(giornata: string, blocco: string) {
 }
 
 function getLiveConfig(giornata?: string | null) {
-  const g = String(giornata ?? "").toLowerCase();
+  const g = normalizzaGiornata(giornata);
 
   if (g === "sedicesimi") {
     return {
@@ -162,7 +219,7 @@ function getLiveConfig(giornata?: string | null) {
     };
   }
 
-  if (g === "semifinale" || g === "semifinali") {
+  if (g === "semifinali") {
     return {
       titolo: "Classifica Live Semifinali",
       label: "Semifinali",
@@ -171,11 +228,20 @@ function getLiveConfig(giornata?: string | null) {
     };
   }
 
-  if (g === "terzo_posto" || g === "finale") {
+  if (g === "terzo_posto") {
+    return {
+      titolo: "Classifica Live Finale 3° Posto",
+      label: "Finale 3° Posto",
+      codici: ["TERZO_POSTO"],
+      href: "/classifiche/terzo-posto",
+    };
+  }
+
+  if (g === "finale") {
     return {
       titolo: "Classifica Live Finale",
       label: "Finale",
-      codici: ["TERZO_POSTO", "FINALE"],
+      codici: ["FINALE"],
       href: "/classifiche/finale",
     };
   }
@@ -385,8 +451,10 @@ function HistoricalCompetitionLink({
 
 function HistoricalRankingsBlock({
   vincitoriStorici,
+  fasiFinaliArchiviate,
 }: {
   vincitoriStorici: VincitoriStorici;
+  fasiFinaliArchiviate: readonly CodiceFaseFinale[];
 }) {
   return (
     <Card>
@@ -480,6 +548,25 @@ function HistoricalRankingsBlock({
             />
           </div>
         </div>
+
+        {FASI_FINALI.filter((fase) =>
+          fasiFinaliArchiviate.includes(fase.codice)
+        ).map((fase) => (
+          <div
+            key={fase.codice}
+            className="rounded-2xl bg-slate-50 p-4"
+          >
+            <div className="mb-3 text-sm font-black text-slate-800">
+              {fase.titolo}
+            </div>
+
+            <HistoricalCompetitionLink
+              href={fase.href}
+              label={fase.label}
+              vincitore={vincitoriStorici[fase.codice]}
+            />
+          </div>
+        ))}
       </div>
     </Card>
   );
@@ -681,6 +768,7 @@ export default async function Home() {
       giornata: string;
       blocco: string;
       primaPartita: Date;
+      ultimaFine: Date | null;
       deadline: Date;
     }
   >();
@@ -692,17 +780,35 @@ export default async function Home() {
 
     const key = chiaveCalendario(p.giornata, p.blocco);
     const kickoff = new Date(p.kickoff);
+    const finePartita = p.fine_partita
+      ? new Date(p.fine_partita)
+      : null;
+    const esistente = blocchi.get(key);
 
-    if (
-      !blocchi.has(key) ||
-      kickoff < blocchi.get(key)!.primaPartita
-    ) {
+    if (!esistente) {
       blocchi.set(key, {
-        giornata: p.giornata,
+        giornata: normalizzaGiornata(p.giornata),
         blocco: p.blocco,
         primaPartita: kickoff,
+        ultimaFine: finePartita,
         deadline: new Date(kickoff.getTime() - 5 * 60 * 1000),
       });
+
+      continue;
+    }
+
+    if (kickoff < esistente.primaPartita) {
+      esistente.primaPartita = kickoff;
+      esistente.deadline = new Date(
+        kickoff.getTime() - 5 * 60 * 1000
+      );
+    }
+
+    if (
+      finePartita &&
+      (!esistente.ultimaFine || finePartita > esistente.ultimaFine)
+    ) {
+      esistente.ultimaFine = finePartita;
     }
   }
 
@@ -713,36 +819,54 @@ export default async function Home() {
         a.deadline.getTime() - b.deadline.getTime()
     )[0];
 
-  const competizioneGiocabile =
-    prossimaDeadline ??
-    Array.from(blocchi.values())
-      .filter((b) => {
-        const codice =
-          CODICE_COMPETIZIONE_BY_CALENDARIO[
-            chiaveCalendario(b.giornata, b.blocco)
-          ];
+  const blocchiGiocabili = Array.from(blocchi.values()).filter(
+  (b) => {
+    const codice =
+      CODICE_COMPETIZIONE_BY_CALENDARIO[
+        chiaveCalendario(b.giornata, b.blocco)
+      ];
 
-        return Boolean(codice);
-      })
-      .sort(
-        (a, b) =>
-          b.primaPartita.getTime() - a.primaPartita.getTime()
-      )[0];
+    return Boolean(codice);
+  }
+);
+
+const prossimoBloccoNonIniziato = blocchiGiocabili
+  .filter((b) => now < b.primaPartita)
+  .sort(
+    (a, b) =>
+      a.primaPartita.getTime() - b.primaPartita.getTime()
+  )[0];
+
+const ultimoBloccoIniziato = blocchiGiocabili
+  .filter((b) => now >= b.primaPartita)
+  .sort(
+    (a, b) =>
+      b.primaPartita.getTime() - a.primaPartita.getTime()
+  )[0];
+
+const competizioneGiocabile =
+  prossimaDeadline ??
+  prossimoBloccoNonIniziato ??
+  ultimoBloccoIniziato;
 
   const partiteProssimoTurno = competizioneGiocabile
   ? (partite ?? [])
       .filter(
         (p) =>
-          String(p.giornata).toLowerCase() ===
-            String(competizioneGiocabile.giornata).toLowerCase() &&
-          String(p.blocco).toLowerCase() ===
-            String(competizioneGiocabile.blocco).toLowerCase()
+          normalizzaGiornata(p.giornata) ===
+            normalizzaGiornata(competizioneGiocabile.giornata) &&
+          String(p.blocco ?? "").toLowerCase() ===
+            String(competizioneGiocabile.blocco ?? "").toLowerCase()
       )
       .reduce(
         (acc, row) => {
           const numeroPartita = Number(row.partita);
 
-          if (!acc.some((p) => p.partita === numeroPartita)) {
+          if (
+            !acc.some(
+              (partita) => partita.partita === numeroPartita
+            )
+          ) {
             acc.push({
               partita: numeroPartita,
               casa: String(row.nazionale ?? ""),
@@ -800,13 +924,72 @@ export default async function Home() {
         )}`;
   }
 
-  const competizioneLive =
+  const statiFasiFinali: FaseFinaleStato[] = FASI_FINALI.map(
+    (fase) => {
+      const bloccoFase = Array.from(blocchi.values()).find(
+        (blocco) =>
+          normalizzaGiornata(blocco.giornata) === fase.giornata
+      );
+
+      const primaPartita = bloccoFase?.primaPartita ?? null;
+      const ultimaFine = bloccoFase?.ultimaFine ?? null;
+
+      return {
+        ...fase,
+        primaPartita,
+        ultimaFine,
+        iniziata: Boolean(primaPartita && now >= primaPartita),
+        conclusa: Boolean(ultimaFine && now >= ultimaFine),
+      };
+    }
+  );
+
+  const ultimaFaseFinaleIniziata = [...statiFasiFinali]
+    .filter((fase) => fase.iniziata)
+    .sort(
+      (a, b) =>
+        (b.primaPartita?.getTime() ?? 0) -
+        (a.primaPartita?.getTime() ?? 0)
+    )[0];
+
+  const faseLiveFinale =
+    ultimaFaseFinaleIniziata &&
+    !(
+      ultimaFaseFinaleIniziata.codice === "FINALE" &&
+      ultimaFaseFinaleIniziata.conclusa
+    )
+      ? ultimaFaseFinaleIniziata
+      : null;
+
+  const fasiFinaliArchiviate = statiFasiFinali
+    .filter((fase, index) => {
+      if (!fase.iniziata) return false;
+
+      if (fase.codice === "FINALE") {
+        return fase.conclusa;
+      }
+
+      return Boolean(statiFasiFinali[index + 1]?.iniziata);
+    })
+    .map((fase) => fase.codice);
+
+  const competizioneLiveOrdinaria =
     Array.from(blocchi.values()).find((b) => {
+      const giornata = normalizzaGiornata(b.giornata);
+
+      if (
+        giornata === "quarti" ||
+        giornata === "semifinali" ||
+        giornata === "terzo_posto" ||
+        giornata === "finale"
+      ) {
+        return false;
+      }
+
       const configurazione =
         competizioniConcluse?.find(
           (x) =>
-            String(x.giornata).toLowerCase() ===
-              String(b.giornata).toLowerCase() &&
+            normalizzaGiornata(x.giornata) === giornata &&
             String(x.blocco).toLowerCase() ===
               String(b.blocco).toLowerCase()
         );
@@ -820,6 +1003,19 @@ export default async function Home() {
         ) === "LIVE"
       );
     }) ?? null;
+
+  const competizioneLive = faseLiveFinale
+    ? {
+        giornata: faseLiveFinale.giornata,
+        blocco: "unico",
+        primaPartita: faseLiveFinale.primaPartita ?? now,
+        ultimaFine: faseLiveFinale.ultimaFine,
+        deadline: new Date(
+          (faseLiveFinale.primaPartita ?? now).getTime() -
+            5 * 60 * 1000
+        ),
+      }
+    : competizioneLiveOrdinaria;
 
   const liveConfig = getLiveConfig(
     competizioneLive?.giornata
@@ -868,6 +1064,10 @@ export default async function Home() {
     vincitore16BASSA,
     vincitore8ALTA,
     vincitore8BASSA,
+    vincitoreQuarti,
+    vincitoreSemifinali,
+    vincitoreTerzoPosto,
+    vincitoreFinale,
   ] = await Promise.all([
     getClassificaAggregata(COMPETIZIONI_GENERALE),
     getClassificaAggregata(COMPETIZIONI_MATA_MATA),
@@ -886,6 +1086,10 @@ export default async function Home() {
     getVincitoreCompetizione("16BASSA"),
     getVincitoreCompetizione("8ALTA"),
     getVincitoreCompetizione("8BASSA"),
+    getVincitoreCompetizione("QUARTI"),
+    getVincitoreCompetizione("SEMIFINALI"),
+    getVincitoreCompetizione("TERZO_POSTO"),
+    getVincitoreCompetizione("FINALE"),
   ]);
 
   const vincitoriStorici: VincitoriStorici = {
@@ -899,6 +1103,10 @@ export default async function Home() {
     "16BASSA": vincitore16BASSA,
     "8ALTA": vincitore8ALTA,
     "8BASSA": vincitore8BASSA,
+    QUARTI: vincitoreQuarti,
+    SEMIFINALI: vincitoreSemifinali,
+    TERZO_POSTO: vincitoreTerzoPosto,
+    FINALE: vincitoreFinale,
   };
 
   const posizioneUtenteGenerale = partecipanteLoggato
@@ -1175,6 +1383,7 @@ export default async function Home() {
         <section className="mb-6 md:mb-8">
           <HistoricalRankingsBlock
             vincitoriStorici={vincitoriStorici}
+            fasiFinaliArchiviate={fasiFinaliArchiviate}
           />
         </section>
 

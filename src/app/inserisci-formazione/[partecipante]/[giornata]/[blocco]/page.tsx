@@ -86,7 +86,7 @@ const { data: metaEsistente } = partecipanteId
 
   return (
     <main className="min-h-screen p-4 bg-slate-100">
-      <a href="/classifiche" className="text-blue-600 text-sm">
+      <a href="/" className="text-blue-600 text-sm">
         ← Classifiche
       </a>
 

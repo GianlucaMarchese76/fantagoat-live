@@ -102,7 +102,7 @@ export default async function ClassificaLive() {
       </div>
 
       <a
-        href="/classifiche"
+        href="/"
         className="mt-4 block text-sm font-semibold text-blue-600"
       >
         → Tutte le classifiche
