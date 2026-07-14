@@ -171,6 +171,7 @@ const rosaBloccata = [
   "8ALTA",
   "8BASSA",
   "QUARTI",
+  "SEMIFINALI",
 ].includes(codiceCompetizione);
 
     return (
