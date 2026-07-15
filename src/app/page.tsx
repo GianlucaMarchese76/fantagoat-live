@@ -19,7 +19,7 @@ const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
   "quarti|unico": "QUARTI",
   "semifinale|unico": "SEMIFINALI",
   "semifinali|unico": "SEMIFINALI",
-  "terzo_posto|unico": "TERZO_POSTO",
+  "terzo_posto|unico": "TERZOPOSTO",
   "finale|unico": "FINALE",
 };
 
@@ -39,7 +39,7 @@ const COMPETIZIONI_MATA_MATA = [
   "8BASSA",
   "QUARTI",
   "SEMIFINALI",
-  "TERZO_POSTO",
+  "TERZOPOSTO",
   "FINALE",
 ];
 
@@ -65,7 +65,7 @@ const FASI_FINALI = [
   },
   {
     giornata: "terzo_posto",
-    codice: "TERZO_POSTO",
+    codice: "TERZOPOSTO",
     titolo: "Classifica Finale 3° Posto",
     label: "Finale 3° Posto",
     href: "/classifiche/terzo-posto",
@@ -232,7 +232,7 @@ function getLiveConfig(giornata?: string | null) {
     return {
       titolo: "Classifica Live Finale 3° Posto",
       label: "Finale 3° Posto",
-      codici: ["TERZO_POSTO"],
+      codici: ["TERZOPOSTO"],
       href: "/classifiche/terzo-posto",
     };
   }
@@ -756,7 +756,7 @@ export default async function Home() {
   const { data: partite } = await supabase
     .from("calendario_partite")
     .select(
-      "giornata, blocco, partita, kickoff, fine_partita, nazionale, avversaria"
+      "giornata, blocco, partita, numero_tabellone, kickoff, fine_partita, nazionale, avversaria"
     )
     .order("kickoff");
 
@@ -850,40 +850,46 @@ const competizioneGiocabile =
   ultimoBloccoIniziato;
 
   const partiteProssimoTurno = competizioneGiocabile
-  ? (partite ?? [])
-      .filter(
-        (p) =>
-          normalizzaGiornata(p.giornata) ===
-            normalizzaGiornata(competizioneGiocabile.giornata) &&
-          String(p.blocco ?? "").toLowerCase() ===
-            String(competizioneGiocabile.blocco ?? "").toLowerCase()
-      )
-      .reduce(
-        (acc, row) => {
-          const numeroPartita = Number(row.partita);
-
-          if (
-            !acc.some(
-              (partita) => partita.partita === numeroPartita
+    ? Array.from(
+        new Map(
+          (partite ?? [])
+            .filter(
+              (p) =>
+                normalizzaGiornata(p.giornata) ===
+                  normalizzaGiornata(
+                    competizioneGiocabile.giornata
+                  ) &&
+                String(p.blocco ?? "").toLowerCase() ===
+                  String(
+                    competizioneGiocabile.blocco ?? ""
+                  ).toLowerCase()
             )
-          ) {
-            acc.push({
-              partita: numeroPartita,
-              casa: String(row.nazionale ?? ""),
-              ospite: String(row.avversaria ?? ""),
-            });
-          }
+            .map((row) => {
+              const casa = String(row.nazionale ?? "").trim();
+              const ospite = String(row.avversaria ?? "").trim();
 
-          return acc;
-        },
-        [] as {
-          partita: number;
-          casa: string;
-          ospite: string;
-        }[]
+              const chiavePartita =
+                row.numero_tabellone != null
+                  ? String(row.numero_tabellone)
+                  : String(row.partita ?? "").trim() ||
+                    [casa, ospite].sort().join("|");
+
+              return [
+                chiavePartita,
+                {
+                  partita: chiavePartita,
+                  casa,
+                  ospite,
+                },
+              ] as const;
+            })
+        ).values()
+      ).sort((a, b) =>
+        a.partita.localeCompare(b.partita, "it", {
+          numeric: true,
+        })
       )
-      .sort((a, b) => a.partita - b.partita)
-  : [];
+    : [];
 
   const codiceCompetizioneHome = competizioneGiocabile
     ? CODICE_COMPETIZIONE_BY_CALENDARIO[
@@ -1088,7 +1094,7 @@ const competizioneGiocabile =
     getVincitoreCompetizione("8BASSA"),
     getVincitoreCompetizione("QUARTI"),
     getVincitoreCompetizione("SEMIFINALI"),
-    getVincitoreCompetizione("TERZO_POSTO"),
+    getVincitoreCompetizione("TERZOPOSTO"),
     getVincitoreCompetizione("FINALE"),
   ]);
 
@@ -1105,7 +1111,7 @@ const competizioneGiocabile =
     "8BASSA": vincitore8BASSA,
     QUARTI: vincitoreQuarti,
     SEMIFINALI: vincitoreSemifinali,
-    TERZO_POSTO: vincitoreTerzoPosto,
+    TERZOPOSTO: vincitoreTerzoPosto,
     FINALE: vincitoreFinale,
   };
 
@@ -1116,10 +1122,10 @@ const competizioneGiocabile =
       )?.posizione
     : null;
 
-  const nomeProssimoTurno = prossimaDeadline
+  const nomeProssimoTurno = competizioneGiocabile
     ? nomeCompetizione(
-        prossimaDeadline.giornata,
-        prossimaDeadline.blocco
+        competizioneGiocabile.giornata,
+        competizioneGiocabile.blocco
       )
     : "Nessuna scadenza attiva";
 
@@ -1250,7 +1256,7 @@ const competizioneGiocabile =
                     {partiteProssimoTurno.map(
                       (partita) => (
                         <div
-                          key={partita.partita}
+                          key={`${partita.partita}-${partita.casa}-${partita.ospite}`}
                           className="grid grid-cols-[1fr_auto_1fr] items-center gap-3"
                         >
                           <div className="flex items-center justify-end gap-2">

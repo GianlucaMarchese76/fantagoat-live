@@ -1,5 +1,6 @@
 import { supabase } from "../../../lib/supabase";
-import { calcolaTotaleFormazione } from "../../../lib/fantagoat/calcoloFormazioneFase2";
+import { competizioniDesignanti } from "../../../lib/fantagoat/continuitaCapitano";
+import { calcolaDettaglioFormazione } from "../../../lib/fantagoat/calcoloFormazioneFase2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,26 +43,31 @@ const MAPPA_COMPETIZIONI: Record<
     blocco: "AF",
     titolo: "Classifiche · Giornata 1 · Gironi A, B, C, D, E, F",
   },
+
   G1GL: {
     giornata: "G1",
     blocco: "GL",
     titolo: "Classifiche · Giornata 1 · Gironi G, H, I, J, K, L",
   },
+
   G2AF: {
     giornata: "G2",
     blocco: "AF",
     titolo: "Classifiche · Giornata 2 · Gironi A, B, C, D, E, F",
   },
+
   G2GL: {
     giornata: "G2",
     blocco: "GL",
     titolo: "Classifiche · Giornata 2 · Gironi G, H, I, J, K, L",
   },
+
   G3AF: {
     giornata: "G3",
     blocco: "AF",
     titolo: "Classifiche · Giornata 3 · Gironi A, B, C, D, E, F",
   },
+
   G3GL: {
     giornata: "G3",
     blocco: "GL",
@@ -73,36 +79,43 @@ const MAPPA_COMPETIZIONI: Record<
     blocco: "1-8",
     titolo: "Classifiche · Sedicesimi · Tabellone 1-8",
   },
+
   "16BASSA": {
     giornata: "Sedicesimi",
     blocco: "9-16",
     titolo: "Classifiche · Sedicesimi · Tabellone 9-16",
   },
+
   "8ALTA": {
     giornata: "Ottavi",
     blocco: "1-4",
     titolo: "Classifiche · Ottavi · Tabellone 1-4",
   },
+
   "8BASSA": {
     giornata: "Ottavi",
     blocco: "5-8",
     titolo: "Classifiche · Ottavi · Tabellone 5-8",
   },
+
   QUARTI: {
     giornata: "quarti",
     blocco: "unico",
     titolo: "Classifiche · Quarti di Finale",
   },
+
   SEMIFINALI: {
     giornata: "semifinali",
     blocco: "unico",
     titolo: "Classifiche · Semifinali",
   },
+
   TERZO_POSTO: {
     giornata: "terzo_posto",
     blocco: "unico",
     titolo: "Classifiche · Finale 3° Posto",
   },
+
   FINALE: {
     giornata: "finale",
     blocco: "unico",
@@ -115,6 +128,7 @@ type RigaClassifica = {
   partecipante_id: string;
   punti: number | string | null;
   posizione: number | null;
+
   partecipanti:
     | {
         id: string;
@@ -137,21 +151,44 @@ type RigaClassificaVisualizzata = {
   punti: number;
 };
 
+type RigaDesignazione = {
+  partecipante_id: string;
+  giocatore_id: string;
+  is_capitano: boolean;
+  is_vice: boolean;
+  competizione_codice: string;
+};
+
+type ContinuitaCapitano = {
+  capitaniPrecedenti: string[];
+  vicePrecedenti: string[];
+};
+
 function normalizzaCompetizione(value: string) {
   const decoded = decodeURIComponent(value).toUpperCase();
 
-  if (decoded === "TERZO-POSTO") return "TERZO_POSTO";
-  if (decoded === "MATA_MATA_CUP") return "MATA-MATA-CUP";
+  if (decoded === "TERZO-POSTO") {
+    return "TERZO_POSTO";
+  }
+
+  if (decoded === "MATA_MATA_CUP") {
+    return "MATA-MATA-CUP";
+  }
 
   return decoded;
 }
 
 function formatPunti(punti: number) {
-  return Number.isInteger(punti) ? String(punti) : punti.toFixed(1);
+  return Number.isInteger(punti)
+    ? String(punti)
+    : punti.toFixed(1);
 }
 
 function getPartecipante(join: RigaClassifica["partecipanti"]) {
-  if (Array.isArray(join)) return join[0] ?? null;
+  if (Array.isArray(join)) {
+    return join[0] ?? null;
+  }
+
   return join ?? null;
 }
 
@@ -162,16 +199,16 @@ async function getClassificaDaTabella(
     .from("classifiche")
     .select(
       `
-      competizione,
-      partecipante_id,
-      punti,
-      posizione,
-      partecipanti:partecipante_id (
-        id,
-        nome,
-        slug
-      )
-    `
+        competizione,
+        partecipante_id,
+        punti,
+        posizione,
+        partecipanti:partecipante_id (
+          id,
+          nome,
+          slug
+        )
+      `
     )
     .in("competizione", codici);
 
@@ -191,10 +228,15 @@ async function getClassificaDaTabella(
   >();
 
   for (const r of (data ?? []) as RigaClassifica[]) {
-    if (!r.partecipante_id) continue;
+    if (!r.partecipante_id) {
+      continue;
+    }
 
     const partecipante = getPartecipante(r.partecipanti);
-    if (!partecipante) continue;
+
+    if (!partecipante) {
+      continue;
+    }
 
     const precedente = map.get(r.partecipante_id);
 
@@ -202,7 +244,9 @@ async function getClassificaDaTabella(
       partecipante_id: r.partecipante_id,
       partecipante: partecipante.nome,
       slug: partecipante.slug,
-      punti: (precedente?.punti ?? 0) + Number(r.punti ?? 0),
+      punti:
+        (precedente?.punti ?? 0) +
+        Number(r.punti ?? 0),
     });
   }
 
@@ -219,7 +263,11 @@ async function getClassificaDaTabella(
     }));
 }
 
-function HeaderTitolo({ titolo }: { titolo: string }) {
+function HeaderTitolo({
+  titolo,
+}: {
+  titolo: string;
+}) {
   const [prima, ...rest] = titolo.split("·");
   const sottotitolo = rest.join("·").trim();
 
@@ -272,7 +320,11 @@ function ClassificaList({
 
           return (
             <a
-              key={r.partecipante_id ?? r.slug ?? r.partecipante}
+              key={
+                r.partecipante_id ??
+                r.slug ??
+                r.partecipante
+              }
               href={href}
               className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
             >
@@ -313,7 +365,10 @@ function PaginaClassifica({
   return (
     <main className="min-h-screen bg-slate-100 p-4">
       <div className="mx-auto max-w-3xl">
-        <a href="/" className="text-sm text-blue-600">
+        <a
+          href="/"
+          className="text-sm text-blue-600"
+        >
           ← Classifiche
         </a>
 
@@ -322,10 +377,10 @@ function PaginaClassifica({
         </header>
 
         {Boolean(errore) && (
-  <pre className="mb-4 overflow-auto rounded-xl bg-red-50 p-4 text-sm text-red-600">
-    {JSON.stringify(errore, null, 2)}
-  </pre>
-)}
+          <pre className="mb-4 overflow-auto rounded-xl bg-red-50 p-4 text-sm text-red-600">
+            {JSON.stringify(errore, null, 2)}
+          </pre>
+        )}
 
         <ClassificaList
           classifica={classifica}
@@ -340,11 +395,19 @@ function PaginaClassifica({
 export default async function ClassificaPage({
   params,
 }: {
-  params: Promise<{ competizione: string }>;
+  params: Promise<{
+    competizione: string;
+  }>;
 }) {
   const { competizione } = await params;
-  const competizioneNorm = normalizzaCompetizione(competizione);
 
+  const competizioneNorm =
+    normalizzaCompetizione(competizione);
+
+  /*
+   * Classifica generale:
+   * somma i risultati ufficiali salvati nella tabella classifiche.
+   */
   if (competizioneNorm === "GENERALE") {
     const classifica = await getClassificaDaTabella(
       COMPETIZIONI_GENERALE
@@ -360,6 +423,9 @@ export default async function ClassificaPage({
     );
   }
 
+  /*
+   * Classifica aggregata delle competizioni a eliminazione diretta.
+   */
   if (competizioneNorm === "MATA-MATA-CUP") {
     const classifica = await getClassificaDaTabella(
       COMPETIZIONI_MATA_MATA
@@ -375,8 +441,14 @@ export default async function ClassificaPage({
     );
   }
 
+  /*
+   * Le competizioni della fase 1 vengono sempre lette
+   * dalla tabella delle classifiche ufficiali.
+   */
   if (COMPETIZIONI_FASE1.includes(competizioneNorm)) {
-    const configurazione = MAPPA_COMPETIZIONI[competizioneNorm];
+    const configurazione =
+      MAPPA_COMPETIZIONI[competizioneNorm];
+
     const classifica = await getClassificaDaTabella([
       competizioneNorm,
     ]);
@@ -390,13 +462,17 @@ export default async function ClassificaPage({
     );
   }
 
-  const configurazione = MAPPA_COMPETIZIONI[competizioneNorm];
+  const configurazione =
+    MAPPA_COMPETIZIONI[competizioneNorm];
 
   if (!configurazione) {
     return (
       <main className="min-h-screen bg-slate-100 p-4">
         <div className="mx-auto max-w-3xl">
-          <a href="/" className="text-sm text-blue-600">
+          <a
+            href="/"
+            className="text-sm text-blue-600"
+          >
             ← Classifiche
           </a>
 
@@ -410,7 +486,14 @@ export default async function ClassificaPage({
 
   const titoloPagina = configurazione.titolo;
 
-  const { data: statoFase, error: statoFaseError } = await supabase
+  /*
+   * Verifica se tutte le partite della competizione
+   * risultano concluse.
+   */
+  const {
+    data: statoFase,
+    error: statoFaseError,
+  } = await supabase
     .from("v_competizioni_concluse")
     .select("conclusa")
     .ilike("giornata", configurazione.giornata)
@@ -444,10 +527,12 @@ export default async function ClassificaPage({
 
   /*
    * Quando la competizione non è ancora conclusa,
-   * continua a calcolare la classifica live dalla vista
-   * v_formazioni_competizione_live.
+   * calcola la classifica live dalla vista.
    */
-  const { data, error } = await supabase
+  const {
+    data,
+    error,
+  } = await supabase
     .from("v_formazioni_competizione_live")
     .select("*")
     .eq("competizione_codice", competizioneNorm)
@@ -469,33 +554,186 @@ export default async function ClassificaPage({
     gruppi.get(key)!.push(row);
   }
 
-  const classifica: RigaClassificaVisualizzata[] = Array.from(
-    gruppi.entries()
+  /*
+   * Recupera le competizioni che determinano
+   * la continuità del capitano per la fase corrente.
+   */
+  const codiciDesignanti =
+    competizioniDesignanti(competizioneNorm);
+
+  /*
+   * Recupera tutti gli ID partecipante presenti
+   * nella classifica live.
+   */
+  const partecipanteIds = Array.from(
+    gruppi.values()
   )
-    .map(([slug, rows]) => ({
-      slug,
-      partecipante_id: rows[0]?.partecipante_id,
-      partecipante: rows[0]?.partecipante ?? slug,
-      posizione: 0,
-      punti: calcolaTotaleFormazione(rows),
-    }))
-    .sort(
-      (a, b) =>
-        b.punti - a.punti ||
-        a.partecipante.localeCompare(b.partecipante)
-    )
-    .map((r, index) => ({
-      ...r,
-      posizione: index + 1,
-      punti: Number(r.punti.toFixed(1)),
-    }));
+    .map((rows) => rows[0]?.partecipante_id)
+    .filter(
+      (id): id is string =>
+        typeof id === "string" &&
+        id.length > 0
+    );
+
+  /*
+   * Evita ID duplicati.
+   */
+  const partecipanteIdsUnici = Array.from(
+    new Set(partecipanteIds)
+  );
+
+  let designati: RigaDesignazione[] = [];
+  let designatiError: unknown = null;
+
+  /*
+   * Carica in una sola query tutti i capitani e vice
+   * delle competizioni precedenti rilevanti.
+   *
+   * In questo modo evitiamo una query separata
+   * per ogni partecipante.
+   */
+  if (
+    codiciDesignanti.length > 0 &&
+    partecipanteIdsUnici.length > 0
+  ) {
+    const {
+      data: designatiData,
+      error: erroreDesignati,
+    } = await supabase
+      .from("v_formazioni_competizione_live")
+      .select(
+        `
+          partecipante_id,
+          giocatore_id,
+          is_capitano,
+          is_vice,
+          competizione_codice
+        `
+      )
+      .in(
+        "partecipante_id",
+        partecipanteIdsUnici
+      )
+      .in(
+        "competizione_codice",
+        codiciDesignanti
+      )
+      .or(
+        "is_capitano.eq.true,is_vice.eq.true"
+      );
+
+    if (erroreDesignati) {
+      console.error(
+        "Errore caricamento continuità capitano:",
+        erroreDesignati
+      );
+
+      designatiError = erroreDesignati;
+    }
+
+    designati =
+      (designatiData ?? []) as RigaDesignazione[];
+  }
+
+  /*
+   * Costruisce la mappa:
+   *
+   * partecipante_id
+   *   → capitani precedenti
+   *   → vice precedenti
+   */
+  const continuitaPerPartecipante =
+    new Map<string, ContinuitaCapitano>();
+
+  for (const partecipanteId of partecipanteIdsUnici) {
+    const righePartecipante = designati.filter(
+      (g) =>
+        g.partecipante_id === partecipanteId
+    );
+
+    const capitaniPrecedenti = Array.from(
+      new Set(
+        righePartecipante
+          .filter((g) => g.is_capitano)
+          .map((g) => g.giocatore_id)
+      )
+    );
+
+    const vicePrecedenti = Array.from(
+      new Set(
+        righePartecipante
+          .filter((g) => g.is_vice)
+          .map((g) => g.giocatore_id)
+      )
+    );
+
+    continuitaPerPartecipante.set(
+      partecipanteId,
+      {
+        capitaniPrecedenti,
+        vicePrecedenti,
+      }
+    );
+  }
+
+  /*
+   * Calcola il punteggio live passando anche
+   * i dati della continuità del capitano.
+   */
+  const classifica: RigaClassificaVisualizzata[] =
+    Array.from(gruppi.entries())
+      .map(([slug, rows]) => {
+        const partecipanteId =
+          rows[0]?.partecipante_id;
+
+        const continuitaCapitano =
+          partecipanteId &&
+          codiciDesignanti.length > 0
+            ? continuitaPerPartecipante.get(
+                partecipanteId
+              )
+            : undefined;
+
+        const dettaglio =
+          calcolaDettaglioFormazione(
+            rows,
+            continuitaCapitano
+          );
+
+        return {
+          slug,
+          partecipante_id: partecipanteId,
+          partecipante:
+            rows[0]?.partecipante ?? slug,
+          posizione: 0,
+          punti: dettaglio.totaleFinale,
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.punti - a.punti ||
+          a.partecipante.localeCompare(
+            b.partecipante
+          )
+      )
+      .map((r, index) => ({
+        ...r,
+        posizione: index + 1,
+        punti: Number(
+          r.punti.toFixed(1)
+        ),
+      }));
 
   return (
     <PaginaClassifica
       titolo={titoloPagina}
       classifica={classifica}
       codice={competizioneNorm}
-      errore={error}
+      errore={
+        error ??
+        statoFaseError ??
+        designatiError
+      }
     />
   );
 }
