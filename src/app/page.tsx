@@ -19,7 +19,7 @@ const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
   "quarti|unico": "QUARTI",
   "semifinale|unico": "SEMIFINALI",
   "semifinali|unico": "SEMIFINALI",
-  "TERZOPOSTO|unico": "TERZOPOSTO",
+  "terzo_posto|unico": "TERZOPOSTO",
   "finale|unico": "FINALE",
 };
 
@@ -64,7 +64,7 @@ const FASI_FINALI = [
     href: "/classifiche/semifinali",
   },
   {
-    giornata: "TERZOPOSTO",
+    giornata: "terzo_posto",
     codice: "TERZOPOSTO",
     titolo: "Classifica Finale 3° Posto",
     label: "Finale 3° Posto",
@@ -120,10 +120,11 @@ function normalizzaGiornata(giornata: string | null | undefined) {
   if (
     value === "terzoposto" ||
     value === "terzo-posto" ||
+    value === "terzo_posto" ||
     value === "finale_3_posto" ||
     value === "finale-3-posto"
   ) {
-    return "TERZOPOSTO";
+    return "terzo_posto";
   }
 
   return value;
@@ -178,7 +179,7 @@ function nomeCompetizione(giornata: string, blocco: string) {
     case "semifinali":
       return "Semifinali";
 
-    case "TERZOPOSTO":
+    case "terzo_posto":
       return "Finale 3° Posto";
 
     case "finale":
@@ -228,7 +229,7 @@ function getLiveConfig(giornata?: string | null) {
     };
   }
 
-  if (g === "TERZOPOSTO") {
+  if (g === "terzo_posto") {
     return {
       titolo: "Classifica Live Finale 3° Posto",
       label: "Finale 3° Posto",
@@ -849,6 +850,34 @@ const competizioneGiocabile =
   prossimoBloccoNonIniziato ??
   ultimoBloccoIniziato;
 
+const codiceCompetizioneGiocabile = competizioneGiocabile
+  ? CODICE_COMPETIZIONE_BY_CALENDARIO[
+      chiaveCalendario(
+        competizioneGiocabile.giornata,
+        competizioneGiocabile.blocco
+      )
+    ] ?? ""
+  : "";
+
+  const titoloCompetizioneGiocabile =
+  codiceCompetizioneGiocabile === "16ALTA"
+    ? "Sedicesimi 1-8"
+    : codiceCompetizioneGiocabile === "16BASSA"
+      ? "Sedicesimi 9-16"
+      : codiceCompetizioneGiocabile === "8ALTA"
+        ? "Ottavi 1-4"
+        : codiceCompetizioneGiocabile === "8BASSA"
+          ? "Ottavi 5-8"
+          : codiceCompetizioneGiocabile === "QUARTI"
+            ? "Quarti di finale"
+            : codiceCompetizioneGiocabile === "SEMIFINALI"
+              ? "Semifinali"
+              : codiceCompetizioneGiocabile === "TERZOPOSTO"
+                ? "Finale 3° posto"
+                : codiceCompetizioneGiocabile === "FINALE"
+                  ? "Finale"
+                  : "";
+
   const partiteProssimoTurno = competizioneGiocabile
     ? Array.from(
         new Map(
@@ -891,14 +920,8 @@ const competizioneGiocabile =
       )
     : [];
 
-  const codiceCompetizioneHome = competizioneGiocabile
-    ? CODICE_COMPETIZIONE_BY_CALENDARIO[
-        chiaveCalendario(
-          competizioneGiocabile.giornata,
-          competizioneGiocabile.blocco
-        )
-      ]
-    : null;
+  const codiceCompetizioneHome =
+    codiceCompetizioneGiocabile || null;
 
   const { data: competizioneAttiva } =
     codiceCompetizioneHome
@@ -986,7 +1009,7 @@ const competizioneGiocabile =
       if (
         giornata === "quarti" ||
         giornata === "semifinali" ||
-        giornata === "TERZOPOSTO" ||
+        giornata === "terzo_posto" ||
         giornata === "finale"
       ) {
         return false;
@@ -1122,12 +1145,8 @@ const competizioneGiocabile =
       )?.posizione
     : null;
 
-  const nomeProssimoTurno = competizioneGiocabile
-    ? nomeCompetizione(
-        competizioneGiocabile.giornata,
-        competizioneGiocabile.blocco
-      )
-    : "Nessuna scadenza attiva";
+  const nomeProssimoTurno =
+    titoloCompetizioneGiocabile || "Nessuna scadenza attiva";
 
   const liveSubtitle = liveConfig
     ? `${partiteGiocateLive}/${partiteTotaliLive} partite concluse, ${partiteMancantiLive} mancanti`
