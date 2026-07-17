@@ -5,7 +5,7 @@ export function codiceCompetizione(giornata: string, blocco: string) {
   if (giornata === "ottavi" && blocco === "5-8") return "8BASSA";
   if (giornata === "quarti") return "QUARTI";
   if (giornata === "semifinale") return "SEMIFINALI";
-  if (giornata === "terzo_posto") return "TERZOPOSTO";
+  if (giornata === "TERZOPOSTO") return "TERZOPOSTO";
   if (giornata === "finale") return "FINALE";
 
   return "16ALTA";

@@ -19,7 +19,7 @@ const CAMPO_QUOTAZIONE: Record<string, string> = {
   "8BASSA": "quotazione_ottavi",
   "QUARTI": "quotazione_quarti",
   "SEMIFINALI": "quotazione_semifinali",
-  "TERZO_POSTO": "quotazione_finale",
+  "TERZOPOSTO": "quotazione_finale",
   "FINALE": "quotazione_finale",
 };
 

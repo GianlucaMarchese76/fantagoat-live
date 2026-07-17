@@ -28,7 +28,7 @@ const competizioniFase2: CompetizioneCard[] = [
   { codice: "8BASSA", label: "Ottavi • Gare 5-8", giornata: "Ottavi", blocco: "5-8" },
   { codice: "QUARTI", label: "Quarti di finale", giornata: "Quarti", blocco: "unico" },
   { codice: "SEMIFINALI", label: "Semifinali", giornata: "Semifinale", blocco: "unico" },
-  { codice: "TERZOPOSTO", label: "Finale 3° posto", giornata: "terzo_posto", blocco: "unico" },
+  { codice: "TERZOPOSTO", label: "Finale 3° posto", giornata: "TERZOPOSTO", blocco: "unico" },
   { codice: "FINALE", label: "Finale", giornata: "finale", blocco: "unico" },
 ];
 

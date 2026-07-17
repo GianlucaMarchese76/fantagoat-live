@@ -19,7 +19,7 @@ const competizioniFase2 = [
   "8BASSA",
   "QUARTI",
   "SEMIFINALI",
-  "TERZO_POSTO",
+  "TERZOPOSTO",
   "FINALE",
 ];
 

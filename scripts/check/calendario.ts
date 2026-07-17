@@ -6,7 +6,7 @@ const ATTESE: Record<string, number> = {
   quarti: 4,
   semifinali: 2,
   finale: 1,
-  terzo_posto: 1,
+  TERZOPOSTO: 1,
 };
 
 async function main() {

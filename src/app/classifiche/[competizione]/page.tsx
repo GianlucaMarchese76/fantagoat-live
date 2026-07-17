@@ -21,7 +21,7 @@ const COMPETIZIONI_MATA_MATA = [
   "8BASSA",
   "QUARTI",
   "SEMIFINALI",
-  "TERZO_POSTO",
+  "TERZOPOSTO",
   "FINALE",
 ];
 
@@ -110,8 +110,8 @@ const MAPPA_COMPETIZIONI: Record<
     titolo: "Classifiche · Semifinali",
   },
 
-  TERZO_POSTO: {
-    giornata: "terzo_posto",
+  TERZOPOSTO: {
+    giornata: "TERZOPOSTO",
     blocco: "unico",
     titolo: "Classifiche · Finale 3° Posto",
   },
@@ -168,7 +168,7 @@ function normalizzaCompetizione(value: string) {
   const decoded = decodeURIComponent(value).toUpperCase();
 
   if (decoded === "TERZO-POSTO") {
-    return "TERZO_POSTO";
+    return "TERZOPOSTO";
   }
 
   if (decoded === "MATA_MATA_CUP") {

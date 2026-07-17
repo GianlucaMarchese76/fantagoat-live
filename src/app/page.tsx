@@ -19,7 +19,7 @@ const CODICE_COMPETIZIONE_BY_CALENDARIO: Record<string, string> = {
   "quarti|unico": "QUARTI",
   "semifinale|unico": "SEMIFINALI",
   "semifinali|unico": "SEMIFINALI",
-  "terzo_posto|unico": "TERZOPOSTO",
+  "TERZOPOSTO|unico": "TERZOPOSTO",
   "finale|unico": "FINALE",
 };
 
@@ -64,7 +64,7 @@ const FASI_FINALI = [
     href: "/classifiche/semifinali",
   },
   {
-    giornata: "terzo_posto",
+    giornata: "TERZOPOSTO",
     codice: "TERZOPOSTO",
     titolo: "Classifica Finale 3° Posto",
     label: "Finale 3° Posto",
@@ -123,7 +123,7 @@ function normalizzaGiornata(giornata: string | null | undefined) {
     value === "finale_3_posto" ||
     value === "finale-3-posto"
   ) {
-    return "terzo_posto";
+    return "TERZOPOSTO";
   }
 
   return value;
@@ -178,7 +178,7 @@ function nomeCompetizione(giornata: string, blocco: string) {
     case "semifinali":
       return "Semifinali";
 
-    case "terzo_posto":
+    case "TERZOPOSTO":
       return "Finale 3° Posto";
 
     case "finale":
@@ -228,7 +228,7 @@ function getLiveConfig(giornata?: string | null) {
     };
   }
 
-  if (g === "terzo_posto") {
+  if (g === "TERZOPOSTO") {
     return {
       titolo: "Classifica Live Finale 3° Posto",
       label: "Finale 3° Posto",
@@ -986,7 +986,7 @@ const competizioneGiocabile =
       if (
         giornata === "quarti" ||
         giornata === "semifinali" ||
-        giornata === "terzo_posto" ||
+        giornata === "TERZOPOSTO" ||
         giornata === "finale"
       ) {
         return false;

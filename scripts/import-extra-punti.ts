@@ -51,6 +51,39 @@ async function main() {
 
   console.log(`Righe lette: ${rows.length}`);
 
+  const fasiDaRipulire = Array.from(
+  new Map(
+    rows
+      .map((row) => ({
+        giornata: normalizza(row.giornata),
+        blocco: normalizza(row.blocco),
+      }))
+      .filter((r) => r.giornata && r.blocco)
+      .map((r) => [
+        `${r.giornata.toLowerCase()}|${r.blocco.toLowerCase()}`,
+        r,
+      ])
+  ).values()
+);
+
+for (const fase of fasiDaRipulire) {
+  const { error: deleteError } = await supabase
+    .from("extra_punti_giocatori")
+    .delete()
+    .ilike("giornata", fase.giornata)
+    .ilike("blocco", fase.blocco);
+
+  if (deleteError) {
+    throw new Error(
+      `Errore pulizia ${fase.giornata}/${fase.blocco}: ${deleteError.message}`
+    );
+  }
+
+  console.log(
+    `Pulizia completata: ${fase.giornata} / ${fase.blocco}`
+  );
+}
+
   for (const row of rows) {
     const giornata = normalizza(row.giornata);
     const blocco = normalizza(row.blocco);

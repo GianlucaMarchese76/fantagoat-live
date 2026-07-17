@@ -20,7 +20,7 @@ function mappingCompetizione(codice: string) {
     "8BASSA": { giornata: "ottavi", blocco: "5-8" },
     "QUARTI": { giornata: "quarti", blocco: "unico" },
     "SEMIFINALI": { giornata: "semifinale", blocco: "unico" },
-    "TERZOPOSTO": { giornata: "terzo_posto", blocco: "unico" },
+    "TERZOPOSTO": { giornata: "TERZOPOSTO", blocco: "unico" },
     "FINALE": { giornata: "finale", blocco: "unico" },
   };
 

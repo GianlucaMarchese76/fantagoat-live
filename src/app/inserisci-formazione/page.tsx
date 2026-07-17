@@ -10,7 +10,7 @@ function labelCompetizione(giornata: string, blocco: string) {
   if (giornata === "ottavi" && blocco === "5-8") return "Ottavi • Gare 5-8";
   if (giornata === "quarti") return "Quarti di finale";
   if (giornata === "semifinale") return "Semifinali";
-  if (giornata === "terzo_posto") return "Finale 3° posto";
+  if (giornata === "TERZOPOSTO") return "Finale 3° posto";
   if (giornata === "finale") return "Finale";
   if (giornata.startsWith("G")) return `${giornata}${blocco}`;
 
@@ -24,7 +24,7 @@ function codiceCompetizione(giornata: string, blocco: string) {
   if (giornata === "ottavi" && blocco === "5-8") return "8BASSA";
   if (giornata === "quarti") return "QUARTI";
   if (giornata === "semifinale") return "SEMIFINALI";
-  if (giornata === "terzo_posto") return "TERZOPOSTO";
+  if (giornata === "TERZOPOSTO") return "TERZOPOSTO";
   if (giornata === "finale") return "FINALE";
 
   return null;
