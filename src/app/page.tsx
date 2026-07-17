@@ -991,16 +991,8 @@ const codiceCompetizioneGiocabile = competizioneGiocabile
       : null;
 
   const fasiFinaliArchiviate = statiFasiFinali
-    .filter((fase, index) => {
-      if (!fase.iniziata) return false;
-
-      if (fase.codice === "FINALE") {
-        return fase.conclusa;
-      }
-
-      return Boolean(statiFasiFinali[index + 1]?.iniziata);
-    })
-    .map((fase) => fase.codice);
+  .filter((fase) => fase.conclusa)
+  .map((fase) => fase.codice);
 
   const competizioneLiveOrdinaria =
     Array.from(blocchi.values()).find((b) => {
