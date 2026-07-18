@@ -50,15 +50,29 @@ function parseFileName(filePath: string) {
     };
   }
 
-  if (baseNorm === "semifinali") {
+    if (baseNorm === "semifinali") {
     return {
       giornata: "semifinali",
       blocco: null as string | null,
     };
   }
 
+  if (baseNorm === "terzo_posto") {
+    return {
+      giornata: "terzo_posto",
+      blocco: null as string | null,
+    };
+  }
+
+  if (baseNorm === "finale") {
+    return {
+      giornata: "finale",
+      blocco: null as string | null,
+    };
+  }
+
   throw new Error(
-    `Nome file non valido: ${base}. Usa un nome come G2AF.xlsx, sedicesimi.xlsx, ottavi.xlsx, quarti.xlsx oppure semifinali.xlsx`
+    `Nome file non valido: ${base}. Usa un nome come G2AF.xlsx, sedicesimi.xlsx, ottavi.xlsx, quarti.xlsx, semifinali.xlsx, terzo_posto.xlsx oppure finale.xlsx`
   );
 }
 
@@ -147,7 +161,7 @@ async function main() {
 
   if (!filePath) {
     throw new Error(
-      "Uso: npm run import-punteggi -- data/punteggi/G2AF.xlsx oppure data/punteggi/sedicesimi.xlsx oppure data/punteggi/ottavi.xlsx oppure data/punteggi/quarti.xlsx oppure data/punteggi/semifinali.xlsx"
+      "Uso: npx tsx scripts/import-punteggi.ts data/punteggi/G2AF.xlsx oppure data/punteggi/sedicesimi.xlsx oppure data/punteggi/ottavi.xlsx oppure data/punteggi/quarti.xlsx oppure data/punteggi/semifinali.xlsx oppure data/punteggi/terzo_posto.xlsx oppure data/punteggi/finale.xlsx"
     );
   }
 
@@ -226,11 +240,13 @@ async function main() {
     : new Map<string, string>();
 
   if (
-    !usaMappaBlocchi &&
-    !blocco &&
-    giornata !== "quarti" &&
-    giornata !== "semifinali"
-  ) {
+  !usaMappaBlocchi &&
+  !blocco &&
+  giornata !== "quarti" &&
+  giornata !== "semifinali" &&
+  giornata !== "terzo_posto" &&
+  giornata !== "finale"
+) {
     throw new Error("Blocco non determinato.");
   }
 
@@ -259,9 +275,11 @@ async function main() {
     let bloccoRecord: string | undefined;
 
     if (
-      giornata === "quarti" ||
-      giornata === "semifinali"
-    ) {
+  giornata === "quarti" ||
+  giornata === "semifinali" ||
+  giornata === "terzo_posto" ||
+  giornata === "finale"
+) {
       bloccoRecord = "unico";
     } else if (usaMappaBlocchi) {
       bloccoRecord = bloccoByNazionale.get(nazionale);
